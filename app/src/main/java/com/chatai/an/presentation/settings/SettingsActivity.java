@@ -3,6 +3,8 @@ package com.chatai.an.presentation.settings;
 import android.Manifest;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.content.res.ColorStateList;
+import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -21,6 +23,7 @@ import androidx.lifecycle.ViewModelProvider;
 
 import com.chatai.an.BuildConfig;
 import com.chatai.an.R;
+import com.chatai.an.ai.integration.adb.ChatAiServerManager;
 import com.chatai.an.app.ChatAiApplication;
 import com.chatai.an.databinding.ActivitySettingsBinding;
 import com.chatai.an.domain.model.AiModel;
@@ -49,10 +52,13 @@ public class SettingsActivity extends AppCompatActivity {
 
     private ActivitySettingsBinding binding;
     private SettingsViewModel viewModel;
+    private ChatAiServerManager chatAiServerManager;
     private ThemeConfig currentThemeConfig;
+    private ThemePalette currentPalette;
     private AppLanguage currentLanguage = AppLanguage.ENGLISH;
     private TerminalBackend currentTerminalBackend = TerminalBackend.APP_TERMINAL;
     private boolean pendingBubbleEnableAfterPerm = false;
+    private boolean pendingPairingAfterNotifPerm = false;
 
     private final ActivityResultLauncher<Intent> overlayPermissionLauncher =
             registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
@@ -69,6 +75,15 @@ public class SettingsActivity extends AppCompatActivity {
 
     private final ActivityResultLauncher<String> notificationPermissionLauncher =
             registerForActivityResult(new ActivityResultContracts.RequestPermission(), granted -> {
+                if (pendingPairingAfterNotifPerm) {
+                    pendingPairingAfterNotifPerm = false;
+                    if (granted) {
+                        proceedWirelessAdbPairingFlow();
+                    } else {
+                        Toast.makeText(this, R.string.wireless_adb_notif_perm_message, Toast.LENGTH_LONG).show();
+                    }
+                    return;
+                }
                 if (ChatBubbleService.canDrawOverlays(this)) {
                     startBubbleNow();
                 }
@@ -88,11 +103,17 @@ public class SettingsActivity extends AppCompatActivity {
         });
 
         ChatAiApplication app = (ChatAiApplication) getApplication();
+        chatAiServerManager = app.getAppContainer().getChatAiServerManager();
         viewModel = new ViewModelProvider(this, new AppViewModelFactory(app.getAppContainer()))
                 .get(SettingsViewModel.class);
 
         binding.btnSettingsBack.setOnClickListener(v -> finish());
         binding.tvVersionValue.setText(BuildConfig.VERSION_NAME);
+
+        binding.btnWirelessAdbPairing.setOnClickListener(v -> onPairingClicked());
+        binding.btnWirelessAdbStart.setOnClickListener(v ->
+                startActivity(new Intent(this, WirelessAdbStarterActivity.class))
+        );
 
         binding.rowProviders.setOnClickListener(v ->
                 startActivity(new Intent(this, ProviderSettingsActivity.class))
@@ -180,6 +201,59 @@ public class SettingsActivity extends AppCompatActivity {
                     && ChatBubbleService.canDrawOverlays(this);
             binding.switchChatBubble.setChecked(runningOrEnabled);
         }
+        if (chatAiServerManager != null) {
+            chatAiServerManager.refreshServerStatusAsync();
+        }
+    }
+
+    private void onPairingClicked() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                && ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+                != PackageManager.PERMISSION_GRANTED) {
+            new MaterialAlertDialogBuilder(this)
+                    .setTitle(R.string.adb_pairing_channel_name)
+                    .setMessage(R.string.wireless_adb_notif_perm_message)
+                    .setNegativeButton(R.string.action_cancel, null)
+                    .setPositiveButton(R.string.wireless_adb_notif_perm_grant, (d, w) -> {
+                        pendingPairingAfterNotifPerm = true;
+                        notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS);
+                    })
+                    .show();
+            return;
+        }
+        proceedWirelessAdbPairingFlow();
+    }
+
+    private void proceedWirelessAdbPairingFlow() {
+        if (chatAiServerManager == null) return;
+        if (!chatAiServerManager.isDeveloperOptionsEnabled()) {
+            new MaterialAlertDialogBuilder(this)
+                    .setTitle(R.string.wireless_adb_dev_opts_title)
+                    .setMessage(R.string.wireless_adb_dev_opts_message)
+                    .setNegativeButton(R.string.action_cancel, null)
+                    .setPositiveButton(R.string.wireless_adb_dev_opts_open, (d, w) -> openSystemSettingsScreen(Settings.ACTION_DEVICE_INFO_SETTINGS))
+                    .show();
+            return;
+        }
+
+        chatAiServerManager.startPairingDiscoveryService();
+        Toast.makeText(this, R.string.wireless_adb_pairing_guide_toast, Toast.LENGTH_LONG).show();
+        openSystemSettingsScreen(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS);
+    }
+
+    private void openSystemSettingsScreen(String primaryAction) {
+        try {
+            Intent intent = new Intent(primaryAction);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(intent);
+        } catch (Throwable ignored) {
+            try {
+                Intent fallback = new Intent(Settings.ACTION_SETTINGS);
+                fallback.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                startActivity(fallback);
+            } catch (Throwable ignored2) {
+            }
+        }
     }
 
     private void showOverlayPermissionDialog() {
@@ -220,6 +294,7 @@ public class SettingsActivity extends AppCompatActivity {
             currentThemeConfig = config;
             boolean isDark = ThemeManager.isDarkActive(this, config);
             ThemePalette palette = ThemeManager.resolvePalette(this, config);
+            currentPalette = palette;
 
             binding.tvThemeModeValue.setText(UiFormatters.formatThemeMode(this, config.getMode()));
             String presetLabel = config.isCustom()
@@ -229,6 +304,10 @@ public class SettingsActivity extends AppCompatActivity {
 
             applyPalette(palette, isDark);
         });
+
+        if (chatAiServerManager != null) {
+            chatAiServerManager.observeState().observe(this, this::bindWirelessAdbState);
+        }
 
         viewModel.getSelectedModel().observe(this, this::bindModelInfo);
 
@@ -354,6 +433,7 @@ public class SettingsActivity extends AppCompatActivity {
 
         int sectionColor = palette.getPrimaryColor();
         binding.tvGroupAiPlatform.setTextColor(sectionColor);
+        binding.tvGroupWirelessAdb.setTextColor(sectionColor);
         binding.tvGroupAppearance.setTextColor(sectionColor);
         binding.tvGroupModels.setTextColor(sectionColor);
         binding.tvGroupConversations.setTextColor(sectionColor);
@@ -362,10 +442,20 @@ public class SettingsActivity extends AppCompatActivity {
         float cardRadius = ThemeApplier.dpToPx(this, 18f);
         int stroke = ThemeApplier.dpToPxInt(this, 1f);
         binding.cardAiPlatform.setBackground(GradientDrawableFactory.createSurfaceCard(palette.getSurfaceColor(), palette.getBorderColor(), stroke, cardRadius));
+        binding.cardWirelessAdb.setBackground(GradientDrawableFactory.createSurfaceCard(palette.getSurfaceColor(), palette.getBorderColor(), stroke, cardRadius));
         binding.cardAppearance.setBackground(GradientDrawableFactory.createSurfaceCard(palette.getSurfaceColor(), palette.getBorderColor(), stroke, cardRadius));
         binding.cardModels.setBackground(GradientDrawableFactory.createSurfaceCard(palette.getSurfaceColor(), palette.getBorderColor(), stroke, cardRadius));
         binding.cardConversations.setBackground(GradientDrawableFactory.createSurfaceCard(palette.getSurfaceColor(), palette.getBorderColor(), stroke, cardRadius));
         binding.cardGeneral.setBackground(GradientDrawableFactory.createSurfaceCard(palette.getSurfaceColor(), palette.getBorderColor(), stroke, cardRadius));
+
+        binding.btnWirelessAdbPairing.setTextColor(palette.getPrimaryColor());
+        binding.btnWirelessAdbPairing.setStrokeColor(ColorStateList.valueOf(palette.getPrimaryColor()));
+        binding.btnWirelessAdbStart.setBackgroundTintList(ColorStateList.valueOf(palette.getPrimaryColor()));
+        binding.btnWirelessAdbStart.setTextColor(palette.getOnPrimaryColor());
+
+        if (chatAiServerManager != null && chatAiServerManager.getCurrentStateSnapshot() != null) {
+            bindWirelessAdbState(chatAiServerManager.getCurrentStateSnapshot());
+        }
 
         int border = palette.getBorderColor();
         binding.divPlatform1.setBackgroundColor(border);
@@ -451,5 +541,47 @@ public class SettingsActivity extends AppCompatActivity {
                 GradientDrawableFactory.createLinearGradient(palette, ThemeApplier.dpToPx(this, 10f))
         );
         binding.ivThemeStudioIcon.setColorFilter(palette.getOnPrimaryColor());
+    }
+
+    private void bindWirelessAdbState(ChatAiServerManager.ServerState state) {
+        if (binding == null || state == null) return;
+        boolean running = state.isRunning();
+        int statusColor = ContextCompat.getColor(
+                this,
+                running ? R.color.status_supported : R.color.status_unsupported
+        );
+        int fill = ThemeApplier.blendWithAlpha(statusColor, 26);
+        int border = ThemeApplier.blendWithAlpha(statusColor, 95);
+        int stroke = ThemeApplier.dpToPxInt(this, 1f);
+        float radius = ThemeApplier.dpToPx(this, 14f);
+
+        binding.cardWirelessAdbStatus.setBackground(
+                GradientDrawableFactory.createSurfaceCard(fill, border, stroke, radius)
+        );
+
+        GradientDrawable dot = new GradientDrawable();
+        dot.setShape(GradientDrawable.OVAL);
+        dot.setColor(statusColor);
+        binding.viewWirelessAdbDot.setBackground(dot);
+
+        binding.tvWirelessAdbStatusTitle.setTextColor(statusColor);
+        binding.tvWirelessAdbStatusTitle.setText(
+                running ? R.string.wireless_adb_status_running : R.string.wireless_adb_status_stopped
+        );
+
+        int detailColor = currentPalette != null
+                ? currentPalette.getTextSecondaryColor()
+                : ContextCompat.getColor(this, android.R.color.darker_gray);
+        binding.tvWirelessAdbStatusDetail.setTextColor(detailColor);
+
+        if (running) {
+            binding.tvWirelessAdbStatusDetail.setText(
+                    getString(R.string.wireless_adb_detail_running, state.uid, state.pid)
+            );
+        } else if (state.paired) {
+            binding.tvWirelessAdbStatusDetail.setText(R.string.wireless_adb_detail_paired);
+        } else {
+            binding.tvWirelessAdbStatusDetail.setText(R.string.wireless_adb_detail_unpaired);
+        }
     }
 }

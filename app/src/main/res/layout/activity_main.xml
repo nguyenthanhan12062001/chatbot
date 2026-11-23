@@ -20,10 +20,10 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="center_vertical"
-            android:minHeight="56dp"
+            android:minHeight="48dp"
             android:orientation="horizontal"
-            android:paddingHorizontal="8dp"
-            android:paddingVertical="6dp">
+            android:paddingHorizontal="6dp"
+            android:paddingVertical="3dp">
 
             <ImageButton
                 android:id="@+id/btn_menu"
@@ -31,42 +31,43 @@
                 android:layout_height="48dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="@string/cd_open_sidebar"
-                android:padding="12dp"
+                android:padding="13dp"
                 android:src="@drawable/ic_menu" />
 
             <FrameLayout
                 android:layout_width="0dp"
-                android:layout_height="wrap_content"
+                android:layout_height="44dp"
                 android:layout_weight="1"
-                android:gravity="center">
+                android:paddingHorizontal="2dp">
 
                 <LinearLayout
                     android:id="@+id/btn_model_selector"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
+                    android:layout_width="match_parent"
+                    android:layout_height="34dp"
                     android:layout_gravity="center"
                     android:clickable="true"
                     android:contentDescription="@string/cd_select_model"
                     android:focusable="true"
                     android:gravity="center_vertical"
-                    android:minHeight="44dp"
                     android:orientation="horizontal"
-                    android:paddingHorizontal="14dp"
-                    android:paddingVertical="8dp">
+                    android:paddingHorizontal="10dp">
 
                     <View
                         android:id="@+id/view_model_dot"
-                        android:layout_width="8dp"
-                        android:layout_height="8dp"
-                        android:layout_marginEnd="8dp" />
+                        android:layout_width="6dp"
+                        android:layout_height="6dp"
+                        android:layout_marginEnd="6dp" />
 
                     <TextView
                         android:id="@+id/tv_selected_model"
-                        android:layout_width="wrap_content"
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
+                        android:layout_weight="1"
                         android:ellipsize="end"
+                        android:includeFontPadding="false"
                         android:maxLines="1"
-                        android:textSize="15sp"
+                        android:singleLine="true"
+                        android:textSize="13sp"
                         android:textStyle="bold"
                         tools:text="Gemini 2.5 Flash" />
 
@@ -75,17 +76,21 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginStart="6dp"
+                        android:ellipsize="end"
+                        android:includeFontPadding="false"
+                        android:maxLines="1"
                         android:paddingHorizontal="6dp"
                         android:paddingVertical="2dp"
-                        android:textSize="10sp"
+                        android:singleLine="true"
+                        android:textSize="9.5sp"
                         android:textStyle="bold"
                         tools:text="API Key" />
 
                     <ImageView
                         android:id="@+id/iv_model_chevron"
-                        android:layout_width="18dp"
-                        android:layout_height="18dp"
-                        android:layout_marginStart="4dp"
+                        android:layout_width="16dp"
+                        android:layout_height="16dp"
+                        android:layout_marginStart="3dp"
                         android:contentDescription="@null"
                         android:src="@drawable/ic_chevron_down" />
                 </LinearLayout>
@@ -97,7 +102,7 @@
                 android:layout_height="48dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="@string/cd_chat_bubble"
-                android:padding="12dp"
+                android:padding="13dp"
                 android:src="@drawable/ic_bubble_chat" />
 
             <ImageButton
@@ -106,18 +111,18 @@
                 android:layout_height="48dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="@string/sidebar_new_chat"
-                android:padding="12dp"
+                android:padding="13dp"
                 android:src="@drawable/ic_add" />
         </LinearLayout>
 
-        <!-- AndroidHarness Compact Mode, Workspace, Shizuku & Context Strip -->
+        <!-- Slim Mode, Workspace, Shizuku & Context Strip -->
         <HorizontalScrollView
             android:id="@+id/harness_header_strip_scroll"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:clipToPadding="false"
             android:paddingHorizontal="10dp"
-            android:paddingBottom="6dp"
+            android:paddingBottom="4dp"
             android:scrollbars="none">
 
             <LinearLayout
@@ -131,7 +136,7 @@
                 <LinearLayout
                     android:id="@+id/harness_mode_toggle"
                     android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
+                    android:layout_height="28dp"
                     android:gravity="center_vertical"
                     android:orientation="horizontal"
                     android:padding="2dp">
@@ -139,29 +144,31 @@
                     <TextView
                         android:id="@+id/btn_mode_chat"
                         android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
+                        android:layout_height="match_parent"
                         android:clickable="true"
                         android:focusable="true"
                         android:gravity="center"
-                        android:minHeight="32dp"
-                        android:paddingHorizontal="12dp"
-                        android:paddingVertical="5dp"
+                        android:includeFontPadding="false"
+                        android:maxLines="1"
+                        android:paddingHorizontal="10dp"
+                        android:singleLine="true"
                         android:text="@string/mode_chat_pill"
-                        android:textSize="12sp"
+                        android:textSize="11.5sp"
                         android:textStyle="bold" />
 
                     <TextView
                         android:id="@+id/btn_mode_code"
                         android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
+                        android:layout_height="match_parent"
                         android:clickable="true"
                         android:focusable="true"
                         android:gravity="center"
-                        android:minHeight="32dp"
-                        android:paddingHorizontal="12dp"
-                        android:paddingVertical="5dp"
+                        android:includeFontPadding="false"
+                        android:maxLines="1"
+                        android:paddingHorizontal="10dp"
+                        android:singleLine="true"
                         android:text="@string/mode_code_pill"
-                        android:textSize="12sp"
+                        android:textSize="11.5sp"
                         android:textStyle="bold" />
                 </LinearLayout>
 
@@ -169,20 +176,18 @@
                 <LinearLayout
                     android:id="@+id/btn_workspace_chip"
                     android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
+                    android:layout_height="28dp"
                     android:layout_marginStart="6dp"
                     android:clickable="true"
                     android:focusable="true"
                     android:gravity="center_vertical"
-                    android:minHeight="34dp"
                     android:orientation="horizontal"
-                    android:paddingHorizontal="10dp"
-                    android:paddingVertical="5dp">
+                    android:paddingHorizontal="9dp">
 
                     <ImageView
                         android:id="@+id/iv_workspace_chip"
-                        android:layout_width="14dp"
-                        android:layout_height="14dp"
+                        android:layout_width="13dp"
+                        android:layout_height="13dp"
                         android:contentDescription="@null"
                         android:src="@drawable/ic_folder" />
 
@@ -190,43 +195,45 @@
                         android:id="@+id/tv_workspace_chip"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginStart="5dp"
+                        android:layout_marginStart="4dp"
                         android:ellipsize="end"
+                        android:includeFontPadding="false"
                         android:maxLines="1"
-                        android:maxWidth="115dp"
+                        android:maxWidth="105dp"
+                        android:singleLine="true"
                         android:text="@string/workspace_chip_default"
-                        android:textSize="11.5sp"
+                        android:textSize="11sp"
                         android:textStyle="bold" />
                 </LinearLayout>
 
-                <!-- Shizuku Quick Status & Permission Pill -->
+                <!-- Shizuku / ADB Quick Status Pill -->
                 <LinearLayout
                     android:id="@+id/btn_shizuku_pill"
                     android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
+                    android:layout_height="28dp"
                     android:layout_marginStart="6dp"
                     android:clickable="true"
                     android:focusable="true"
                     android:gravity="center_vertical"
-                    android:minHeight="34dp"
                     android:orientation="horizontal"
-                    android:paddingHorizontal="10dp"
-                    android:paddingVertical="5dp">
+                    android:paddingHorizontal="9dp">
 
                     <View
                         android:id="@+id/view_shizuku_dot"
-                        android:layout_width="7dp"
-                        android:layout_height="7dp"
-                        android:layout_marginEnd="6dp" />
+                        android:layout_width="6dp"
+                        android:layout_height="6dp"
+                        android:layout_marginEnd="5dp" />
 
                     <TextView
                         android:id="@+id/tv_shizuku_pill"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:ellipsize="end"
+                        android:includeFontPadding="false"
                         android:maxLines="1"
+                        android:singleLine="true"
                         android:text="@string/shizuku_badge_off"
-                        android:textSize="11.5sp"
+                        android:textSize="11sp"
                         android:textStyle="bold" />
                 </LinearLayout>
 
@@ -234,22 +241,23 @@
                 <LinearLayout
                     android:id="@+id/btn_context_meter"
                     android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
+                    android:layout_height="28dp"
                     android:layout_marginStart="6dp"
                     android:clickable="true"
                     android:focusable="true"
                     android:gravity="center_vertical"
-                    android:minHeight="34dp"
                     android:orientation="horizontal"
-                    android:paddingHorizontal="10dp"
-                    android:paddingVertical="5dp">
+                    android:paddingHorizontal="9dp">
 
                     <TextView
                         android:id="@+id/tv_context_meter"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:fontFamily="monospace"
-                        android:textSize="11sp"
+                        android:includeFontPadding="false"
+                        android:maxLines="1"
+                        android:singleLine="true"
+                        android:textSize="10.5sp"
                         android:textStyle="bold"
                         tools:text="Ctx 14%" />
                 </LinearLayout>
@@ -438,17 +446,24 @@
                 android:paddingBottom="14dp"
                 android:visibility="gone" />
 
-            <!-- Floating Scroll-to-Bottom Button -->
-            <ImageButton
+            <!-- Floating Scroll-to-Bottom / New Messages Pill -->
+            <TextView
                 android:id="@+id/btn_scroll_to_bottom"
-                android:layout_width="42dp"
-                android:layout_height="42dp"
-                android:layout_gravity="bottom|end"
-                android:layout_margin="14dp"
+                android:layout_width="wrap_content"
+                android:layout_height="36dp"
+                android:layout_gravity="bottom|center_horizontal"
+                android:layout_marginBottom="12dp"
+                android:clickable="true"
                 android:contentDescription="@string/cd_scroll_to_bottom"
-                android:elevation="4dp"
-                android:padding="10dp"
-                android:src="@drawable/ic_chevron_down"
+                android:elevation="6dp"
+                android:focusable="true"
+                android:gravity="center"
+                android:maxLines="1"
+                android:paddingHorizontal="14dp"
+                android:singleLine="true"
+                android:text="@string/scroll_new_messages"
+                android:textSize="12sp"
+                android:textStyle="bold"
                 android:visibility="gone" />
         </FrameLayout>
 
@@ -607,100 +622,46 @@
                         android:padding="12dp"
                         android:src="@drawable/ic_add" />
 
-                    <HorizontalScrollView
+                    <LinearLayout
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:clipToPadding="false"
-                        android:scrollbars="none">
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
 
                         <LinearLayout
+                            android:id="@+id/btn_deep_thinking"
                             android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
+                            android:layout_height="34dp"
+                            android:layout_marginStart="2dp"
+                            android:clickable="true"
+                            android:contentDescription="@string/cd_deep_thinking"
+                            android:focusable="true"
                             android:gravity="center_vertical"
+                            android:minHeight="48dp"
                             android:orientation="horizontal"
-                            android:paddingEnd="6dp">
+                            android:paddingHorizontal="12dp"
+                            android:paddingVertical="5dp">
 
-                            <LinearLayout
-                                android:id="@+id/btn_agent_mode"
-                                android:layout_width="wrap_content"
-                                android:layout_height="36dp"
-                                android:layout_marginStart="2dp"
-                                android:clickable="true"
-                                android:contentDescription="@string/cd_toggle_agent_mode"
-                                android:focusable="true"
-                                android:gravity="center_vertical"
-                                android:minHeight="48dp"
-                                android:orientation="horizontal"
-                                android:paddingHorizontal="12dp"
-                                android:paddingVertical="6dp">
-
-                                <ImageView
-                                    android:id="@+id/iv_agent_mode"
-                                    android:layout_width="16dp"
-                                    android:layout_height="16dp"
-                                    android:contentDescription="@null"
-                                    android:src="@drawable/ic_chat_spark" />
-
-                                <TextView
-                                    android:id="@+id/tv_agent_mode"
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:layout_marginStart="6dp"
-                                    android:text="@string/mode_chat_short"
-                                    android:textSize="12sp"
-                                    android:textStyle="bold" />
-                            </LinearLayout>
-
-                            <LinearLayout
-                                android:id="@+id/btn_deep_thinking"
-                                android:layout_width="wrap_content"
-                                android:layout_height="36dp"
-                                android:layout_marginStart="6dp"
-                                android:clickable="true"
-                                android:contentDescription="@string/cd_deep_thinking"
-                                android:focusable="true"
-                                android:gravity="center_vertical"
-                                android:minHeight="48dp"
-                                android:orientation="horizontal"
-                                android:paddingHorizontal="12dp"
-                                android:paddingVertical="6dp">
-
-                                <ImageView
-                                    android:id="@+id/iv_deep_thinking"
-                                    android:layout_width="16dp"
-                                    android:layout_height="16dp"
-                                    android:contentDescription="@null"
-                                    android:src="@drawable/ic_psychology" />
-
-                                <TextView
-                                    android:id="@+id/tv_deep_thinking"
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:layout_marginStart="6dp"
-                                    android:text="@string/deep_thinking_label"
-                                    android:textSize="12sp"
-                                    android:textStyle="bold" />
-                            </LinearLayout>
+                            <ImageView
+                                android:id="@+id/iv_deep_thinking"
+                                android:layout_width="15dp"
+                                android:layout_height="15dp"
+                                android:contentDescription="@null"
+                                android:src="@drawable/ic_psychology" />
 
                             <TextView
-                                android:id="@+id/btn_project_tag"
+                                android:id="@+id/tv_deep_thinking"
                                 android:layout_width="wrap_content"
-                                android:layout_height="36dp"
-                                android:layout_marginStart="6dp"
-                                android:clickable="true"
-                                android:ellipsize="end"
-                                android:focusable="true"
-                                android:gravity="center"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="5dp"
                                 android:maxLines="1"
-                                android:maxWidth="130dp"
-                                android:minHeight="48dp"
-                                android:paddingHorizontal="12dp"
-                                android:text="@string/project_tag_none"
+                                android:singleLine="true"
+                                android:text="@string/deep_thinking_label"
                                 android:textSize="12sp"
                                 android:textStyle="bold" />
                         </LinearLayout>
-                    </HorizontalScrollView>
+                    </LinearLayout>
 
                     <ImageButton
                         android:id="@+id/btn_stop"

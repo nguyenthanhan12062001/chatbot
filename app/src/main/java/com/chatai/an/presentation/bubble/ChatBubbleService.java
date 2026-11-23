@@ -51,15 +51,20 @@ import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.ServiceCompat;
 import androidx.core.content.ContextCompat;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.lifecycle.Observer;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.recyclerview.widget.SimpleItemAnimator;
 
 import com.chatai.an.R;
 import com.chatai.an.ai.core.ChatSessionCoordinator;
 import com.chatai.an.ai.integration.shizuku.ShizukuIntegrationManager;
 import com.chatai.an.app.AppContainer;
 import com.chatai.an.app.ChatAiApplication;
+import com.chatai.an.app.AppTaskTracker;
 import com.chatai.an.app.MainActivity;
 import com.chatai.an.core.AppLogger;
 import com.chatai.an.domain.model.AgentMode;
@@ -209,6 +214,8 @@ public class ChatBubbleService extends Service {
 
     private boolean isExpanded = false;
     private boolean hasUnreadReply = false;
+    private boolean autoScrollEnabled = true;
+    private boolean isProgrammaticScroll = false;
     private int screenWidth = 1080;
     private int screenHeight = 1920;
     private int statusBarHeight = 0;
@@ -606,6 +613,41 @@ public class ChatBubbleService extends Service {
             }
             return false;
         });
+        ViewCompat.setOnApplyWindowInsetsListener(popupView, (v, windowInsets) -> {
+            Insets imeInsets = windowInsets.getInsets(WindowInsetsCompat.Type.ime());
+            int imeBottom = imeInsets.bottom;
+            boolean isImeVisible = windowInsets.isVisible(WindowInsetsCompat.Type.ime());
+
+            int maxPopupWidth = ThemeApplier.dpToPxInt(themedContext, 520f);
+            popupParams.width = Math.min((int) (screenWidth * 0.96f), maxPopupWidth);
+            popupParams.y = statusBarHeight + ThemeApplier.dpToPxInt(themedContext, 8f);
+
+            int baseExpandedHeight = Math.min(
+                    screenHeight - statusBarHeight - navBarHeight - ThemeApplier.dpToPxInt(themedContext, 32f),
+                    (int) (screenHeight * 0.78f)
+            );
+
+            int desiredCardHeight;
+            if (isImeVisible && imeBottom > 0) {
+                int availableHeightForPopup = screenHeight - statusBarHeight - imeBottom - ThemeApplier.dpToPxInt(themedContext, 16f);
+                desiredCardHeight = Math.max(ThemeApplier.dpToPxInt(themedContext, 280f), Math.min(baseExpandedHeight, availableHeightForPopup));
+            } else {
+                desiredCardHeight = baseExpandedHeight;
+            }
+
+            ViewGroup.LayoutParams cardLp = popupCard.getLayoutParams();
+            if (cardLp != null && cardLp.height != desiredCardHeight) {
+                cardLp.height = desiredCardHeight;
+                popupCard.setLayoutParams(cardLp);
+            }
+
+            try {
+                windowManager.updateViewLayout(popupView, popupParams);
+            } catch (Exception ignored) {
+            }
+
+            return WindowInsetsCompat.CONSUMED;
+        });
 
         popupCard = popupView.findViewById(R.id.bubble_popup_card);
         popupHeaderAvatar = popupView.findViewById(R.id.bubble_header_avatar);
@@ -737,6 +779,33 @@ public class ChatBubbleService extends Service {
         lm.setStackFromEnd(true);
         rvMessages.setLayoutManager(lm);
         rvMessages.setAdapter(messageAdapter);
+        if (rvMessages.getItemAnimator() instanceof SimpleItemAnimator) {
+            ((SimpleItemAnimator) rvMessages.getItemAnimator()).setSupportsChangeAnimations(false);
+        }
+        rvMessages.addOnScrollListener(new RecyclerView.OnScrollListener() {
+            @Override
+            public void onScrollStateChanged(RecyclerView recyclerView, int newState) {
+                if (newState == RecyclerView.SCROLL_STATE_DRAGGING) {
+                    isProgrammaticScroll = false;
+                } else if (newState == RecyclerView.SCROLL_STATE_IDLE) {
+                    isProgrammaticScroll = false;
+                    if (!recyclerView.canScrollVertically(1)) {
+                        autoScrollEnabled = true;
+                    }
+                }
+            }
+
+            @Override
+            public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
+                if (!isProgrammaticScroll) {
+                    if (dy < 0 && recyclerView.canScrollVertically(1)) {
+                        autoScrollEnabled = false;
+                    } else if (dy > 0 && !recyclerView.canScrollVertically(1)) {
+                        autoScrollEnabled = true;
+                    }
+                }
+            }
+        });
 
         btnNewChat.setOnClickListener(v -> coordinator.startNewChat());
         btnOpenApp.setOnClickListener(v -> openFullApp());
@@ -782,7 +851,8 @@ public class ChatBubbleService extends Service {
                 WindowManager.LayoutParams.WRAP_CONTENT,
                 getOverlayWindowType(),
                 WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
-                        | WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH,
+                        | WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH
+                        | WindowManager.LayoutParams.FLAG_ALT_FOCUSABLE_IM,
                 PixelFormat.TRANSLUCENT
         );
         popupParams.gravity = Gravity.TOP | Gravity.CENTER_HORIZONTAL;
@@ -903,13 +973,13 @@ public class ChatBubbleService extends Service {
     }
 
     private void updatePopupDimensions() {
-        int maxPopupWidth = ThemeApplier.dpToPxInt(themedContext, 440f);
-        popupParams.width = Math.min((int) (screenWidth * 0.94f), maxPopupWidth);
-        popupParams.y = statusBarHeight + ThemeApplier.dpToPxInt(themedContext, 12f);
+        int maxPopupWidth = ThemeApplier.dpToPxInt(themedContext, 520f);
+        popupParams.width = Math.min((int) (screenWidth * 0.96f), maxPopupWidth);
+        popupParams.y = statusBarHeight + ThemeApplier.dpToPxInt(themedContext, 8f);
 
         int desiredCardHeight = Math.min(
-                ThemeApplier.dpToPxInt(themedContext, 500f),
-                Math.max(ThemeApplier.dpToPxInt(themedContext, 320f), (int) (screenHeight * 0.62f))
+                screenHeight - statusBarHeight - navBarHeight - ThemeApplier.dpToPxInt(themedContext, 32f),
+                (int) (screenHeight * 0.78f)
         );
         ViewGroup.LayoutParams cardLp = popupCard.getLayoutParams();
         if (cardLp != null) {
@@ -926,6 +996,11 @@ public class ChatBubbleService extends Service {
         updateScreenBounds();
         updatePopupDimensions();
         shizukuManager.refreshState();
+
+        AppTaskTracker tracker = ((ChatAiApplication) getApplication()).getAppTaskTracker();
+        if (tracker != null) {
+            tracker.moveAppTaskToBackground();
+        }
 
         if (bubbleView != null) {
             bubbleView.setVisibility(View.GONE);
@@ -1056,13 +1131,19 @@ public class ChatBubbleService extends Service {
 
     private void openFullApp() {
         collapsePopup();
-        Intent intent = new Intent(this, MainActivity.class);
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
-        String activeConvId = coordinator.getActiveConversationId().getValue();
-        if (activeConvId != null && !activeConvId.isEmpty()) {
-            intent.putExtra(MainActivity.EXTRA_OPEN_CONVERSATION_ID, activeConvId);
+        AppTaskTracker tracker = ((ChatAiApplication) getApplication()).getAppTaskTracker();
+        if (tracker != null) {
+            String activeConvId = coordinator.getActiveConversationId().getValue();
+            tracker.restoreAppTaskToForeground(this, activeConvId);
+        } else {
+            Intent intent = new Intent(this, MainActivity.class);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+            String activeConvId = coordinator.getActiveConversationId().getValue();
+            if (activeConvId != null && !activeConvId.isEmpty()) {
+                intent.putExtra(MainActivity.EXTRA_OPEN_CONVERSATION_ID, activeConvId);
+            }
+            startActivity(intent);
         }
-        startActivity(intent);
     }
 
     private void sendBubbleMessage() {
@@ -1084,8 +1165,12 @@ public class ChatBubbleService extends Service {
         if (rvMessages != null && emptyStateView != null) {
             rvMessages.setVisibility(hasMsgs ? View.VISIBLE : View.GONE);
             emptyStateView.setVisibility(hasMsgs ? View.GONE : View.VISIBLE);
-            if (hasMsgs) {
+            if (!hasMsgs) {
+                autoScrollEnabled = true;
+            } else if (autoScrollEnabled) {
+                isProgrammaticScroll = true;
                 rvMessages.scrollToPosition(currentMessages.size() - 1);
+                rvMessages.post(() -> isProgrammaticScroll = false);
             }
         }
     }

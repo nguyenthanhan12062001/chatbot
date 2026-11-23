@@ -185,9 +185,9 @@
     <string name="execution_state_completed">Completed</string>
     <string name="execution_state_stopped">Stopped</string>
     <string name="execution_state_failed">Request failed</string>
-    <string name="thinking_process_title">Thinking Process</string>
-    <string name="thinking_process_toggle_show">Show reasoning</string>
-    <string name="thinking_process_toggle_hide">Hide reasoning</string>
+    <string name="thinking_process_title">Thinking</string>
+    <string name="thinking_process_toggle_show">Show</string>
+    <string name="thinking_process_toggle_hide">Hide</string>
     <string name="filter_all">All</string>
     <string name="filter_free">Free Cloud</string>
     <string name="filter_personal_api">Personal API</string>
@@ -436,6 +436,11 @@
     <string name="action_regenerate">Regenerate</string>
     <string name="action_continue_in_code">Continue in Code</string>
     <string name="cd_scroll_to_bottom">Scroll to bottom</string>
+    <string name="scroll_new_messages">↓ New messages</string>
+    <string name="scroll_to_bottom_short">↓ Latest</string>
+    <string name="action_more">More options</string>
+    <string name="message_details_title">Message details</string>
+    <string name="message_details_tokens">Tokens: %1$d in · %2$d out (%3$d total)</string>
     <string name="slash_cmd_code_desc">Switch to autonomous Coding Agent mode</string>
     <string name="slash_cmd_chat_desc">Switch to conversational Chat mode</string>
     <string name="slash_cmd_context_desc">Inspect context window &amp; compact history</string>
@@ -450,8 +455,8 @@
     <string name="timeline_tool_call_title">Tool Call</string>
     <string name="timeline_sources_title">Sources</string>
     <string name="timeline_sources_count">Sources (%1$d)</string>
-    <string name="timeline_show_details">Show details</string>
-    <string name="timeline_hide_details">Hide details</string>
+    <string name="timeline_show_details">Show</string>
+    <string name="timeline_hide_details">Hide</string>
     <string name="timeline_show_sources">Show list</string>
     <string name="timeline_hide_sources">Hide list</string>
     <string name="tool_input_label">Input</string>
@@ -474,6 +479,37 @@
     <string name="hub_background_request">Request Background Exemption</string>
     <string name="dialog_background_title">Background Execution Permission</string>
     <string name="dialog_background_message">To keep ChatAI running tasks, terminal sessions, and ADB connections reliably in the background, please allow unrestricted background execution or exempt ChatAI from battery optimizations.</string>
+
+    <!-- Wireless Debugging Pairing & ChatAI Server -->
+    <string name="settings_group_wireless_adb">Pairing via Wireless Debugging</string>
+    <string name="wireless_adb_title">ChatAI Server</string>
+    <string name="wireless_adb_status_running">ChatAI Server is running</string>
+    <string name="wireless_adb_status_stopped">ChatAI Server is not running</string>
+    <string name="wireless_adb_status_starting">Starting ChatAI Server…</string>
+    <string name="wireless_adb_detail_running">UID %1$d (PID %2$d) • ADB privileges ready for ChatAI</string>
+    <string name="wireless_adb_detail_paired">Paired with Wireless Debugging • Tap Start to launch</string>
+    <string name="wireless_adb_detail_unpaired">Enable Wireless Debugging &amp; tap Pairing first</string>
+    <string name="wireless_adb_btn_pairing">Pairing</string>
+    <string name="wireless_adb_btn_start">Start</string>
+    <string name="wireless_adb_console_title">ChatAI Server Console</string>
+    <string name="wireless_adb_console_close">Close</string>
+    <string name="wireless_adb_console_retry">Retry</string>
+    <string name="wireless_adb_dev_opts_title">Developer Options Required</string>
+    <string name="wireless_adb_dev_opts_message">Developer Options is currently turned off.\n\nTo enable it:\n1. Open Settings → About phone\n2. Tap \"Build number\" 7 times\n3. Return here and tap Pairing again</string>
+    <string name="wireless_adb_dev_opts_open">Open About Phone</string>
+    <string name="wireless_adb_pairing_guide_toast">Open Wireless debugging → Pair device with pairing code, then enter the 6-digit PIN in ChatAI\'s notification.</string>
+    <string name="wireless_adb_notif_perm_message">Allow notifications so ChatAI can show the inline pairing PIN prompt while Wireless Debugging is open.</string>
+    <string name="wireless_adb_notif_perm_grant">Allow Notifications</string>
+    <string name="adb_pairing_channel_name">Wireless Debugging Pairing</string>
+    <string name="adb_pairing_channel_desc">Displays the inline 6-digit pairing PIN prompt for Wireless Debugging</string>
+    <string name="adb_notif_searching_title">Searching pairing service…</string>
+    <string name="adb_notif_searching_body">Open Wireless debugging → Pair device with pairing code</string>
+    <string name="adb_notif_found_title">Pairing service found</string>
+    <string name="adb_notif_action_enter_code">Enter pairing code</string>
+    <string name="adb_notif_pairing_success_title">Pairing successful</string>
+    <string name="adb_notif_pairing_success_body">Return to ChatAI Settings and tap Start to launch ChatAI Server.</string>
+    <string name="adb_notif_pairing_failed_title">Pairing failed</string>
+    <string name="adb_err_pairing_service_missing">Pairing service not found. Keep the pairing code dialog open and retry.</string>
 </resources>
 
 

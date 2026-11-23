@@ -38,7 +38,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="6dp"
-            android:textSize="12sp"
+            android:textSize="11.5sp"
             android:textStyle="bold"
             tools:text="AnAI" />
 
@@ -48,23 +48,17 @@
             android:layout_height="wrap_content"
             android:layout_marginStart="6dp"
             android:ellipsize="end"
-            android:maxWidth="165dp"
+            android:maxWidth="150dp"
             android:maxLines="1"
-            android:textSize="11sp"
+            android:singleLine="true"
+            android:textSize="10.5sp"
             tools:text="GPT-4o Mini" />
 
         <TextView
             android:id="@+id/tv_message_access_badge"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="5dp"
-            android:paddingHorizontal="5dp"
-            android:paddingVertical="1dp"
-            android:textSize="9.5sp"
-            android:textStyle="bold"
-            android:visibility="gone"
-            tools:text="Free"
-            tools:visibility="visible" />
+            android:visibility="gone" />
     </LinearLayout>
 
     <!-- Compact Collapsible Thinking Pill / Drawer (outside answer bubble) -->
@@ -83,15 +77,15 @@
             android:clickable="true"
             android:focusable="true"
             android:gravity="center_vertical"
-            android:minHeight="28dp"
+            android:minHeight="24dp"
             android:orientation="horizontal"
-            android:paddingHorizontal="10dp"
-            android:paddingVertical="4dp">
+            android:paddingHorizontal="9dp"
+            android:paddingVertical="3dp">
 
             <ImageView
                 android:id="@+id/iv_thinking_icon"
-                android:layout_width="14dp"
-                android:layout_height="14dp"
+                android:layout_width="13dp"
+                android:layout_height="13dp"
                 android:contentDescription="@null"
                 android:src="@drawable/ic_psychology" />
 
@@ -101,16 +95,17 @@
                 android:layout_height="wrap_content"
                 android:layout_marginStart="5dp"
                 android:text="@string/thinking_process_title"
-                android:textSize="11.5sp"
+                android:textSize="11sp"
                 android:textStyle="bold" />
 
             <TextView
                 android:id="@+id/tv_thinking_toggle"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
+                android:layout_marginStart="6dp"
                 android:text="@string/thinking_process_toggle_show"
-                android:textSize="11sp" />
+                android:textSize="10.5sp"
+                android:textStyle="bold" />
         </LinearLayout>
 
         <TextView
@@ -208,26 +203,13 @@
             android:id="@+id/tv_message_deep_thinking"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="5dp"
-            android:paddingHorizontal="5dp"
-            android:paddingVertical="1dp"
-            android:text="@string/deep_thinking_enabled_badge"
-            android:textSize="9.5sp"
-            android:textStyle="bold"
             android:visibility="gone" />
 
         <TextView
             android:id="@+id/tv_message_tokens"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="6dp"
-            android:ellipsize="end"
-            android:maxWidth="145dp"
-            android:maxLines="1"
-            android:textSize="10sp"
-            android:visibility="gone"
-            tools:text="142 in · 310 out"
-            tools:visibility="visible" />
+            android:visibility="gone" />
 
         <View
             android:id="@+id/spacer_footer_actions"
@@ -238,46 +220,26 @@
         <ImageButton
             android:id="@+id/btn_msg_copy"
             android:layout_width="32dp"
-            android:layout_height="30dp"
+            android:layout_height="28dp"
             android:layout_marginStart="4dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/action_copy"
-            android:padding="7dp"
+            android:padding="6dp"
             android:scaleType="centerInside"
             android:src="@drawable/ic_copy" />
 
         <ImageButton
-            android:id="@+id/btn_msg_regenerate"
+            android:id="@+id/btn_msg_more"
             android:layout_width="32dp"
-            android:layout_height="30dp"
+            android:layout_height="28dp"
             android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="@string/action_regenerate"
-            android:padding="7dp"
+            android:contentDescription="@string/action_more"
+            android:padding="6dp"
             android:scaleType="centerInside"
-            android:src="@drawable/ic_refresh" />
-
-        <ImageButton
-            android:id="@+id/btn_msg_edit"
-            android:layout_width="32dp"
-            android:layout_height="30dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="@string/action_edit"
-            android:padding="7dp"
-            android:scaleType="centerInside"
-            android:src="@drawable/ic_edit" />
-
-        <ImageButton
-            android:id="@+id/btn_msg_delete"
-            android:layout_width="32dp"
-            android:layout_height="30dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="@string/action_delete"
-            android:padding="7dp"
-            android:scaleType="centerInside"
-            android:src="@drawable/ic_delete" />
+            android:src="@drawable/ic_more_vert" />
     </LinearLayout>
 
-    <!-- Continue in Code handover chip & Suggested Follow-Up Chips (latest completed assistant message) -->
+    <!-- Continue in Code handover chip & Horizontal Suggested Follow-Up Chips -->
     <com.chatai.an.presentation.chat.MaxWidthLinearLayout
         android:id="@+id/ll_post_message_actions"
         android:layout_width="wrap_content"
@@ -294,16 +256,16 @@
             android:clickable="true"
             android:focusable="true"
             android:gravity="center_vertical"
-            android:minHeight="34dp"
+            android:minHeight="30dp"
             android:orientation="horizontal"
             android:paddingHorizontal="10dp"
-            android:paddingVertical="5dp"
+            android:paddingVertical="4dp"
             android:visibility="gone">
 
             <ImageView
                 android:id="@+id/iv_handover_code"
-                android:layout_width="14dp"
-                android:layout_height="14dp"
+                android:layout_width="13dp"
+                android:layout_height="13dp"
                 android:contentDescription="@null"
                 android:src="@drawable/ic_build" />
 
@@ -317,11 +279,19 @@
                 android:textStyle="bold" />
         </LinearLayout>
 
-        <LinearLayout
-            android:id="@+id/ll_follow_up_chips_container"
-            android:layout_width="wrap_content"
+        <HorizontalScrollView
+            android:id="@+id/hsv_follow_up_chips"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:visibility="gone" />
+            android:clipToPadding="false"
+            android:scrollbars="none">
+
+            <LinearLayout
+                android:id="@+id/ll_follow_up_chips_container"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:visibility="gone" />
+        </HorizontalScrollView>
     </com.chatai.an.presentation.chat.MaxWidthLinearLayout>
 </LinearLayout>

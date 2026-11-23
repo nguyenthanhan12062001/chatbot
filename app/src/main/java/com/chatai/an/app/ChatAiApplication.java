@@ -11,10 +11,13 @@ import com.chatai.an.theme.ThemeManager;
 
 public class ChatAiApplication extends Application {
     private AppContainer appContainer;
+    private AppTaskTracker appTaskTracker;
 
     @Override
     public void onCreate() {
         super.onCreate();
+        appTaskTracker = new AppTaskTracker();
+        registerActivityLifecycleCallbacks(appTaskTracker);
         appContainer = new AppContainer(this);
 
         ThemeConfig activeTheme = appContainer.getThemeRepository().getActiveThemeSnapshot();
@@ -28,5 +31,9 @@ public class ChatAiApplication extends Application {
 
     public AppContainer getAppContainer() {
         return appContainer;
+    }
+
+    public AppTaskTracker getAppTaskTracker() {
+        return appTaskTracker;
     }
 }

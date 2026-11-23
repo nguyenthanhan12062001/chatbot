@@ -73,6 +73,20 @@ public final class FollowUpSuggestionHelper {
             List<ToolCallRecord> toolRecords,
             boolean vietnamese
     ) {
+        return resolveOrSynthesize(rawContent, cleanContent, "", mode, toolRecords, vietnamese);
+    }
+
+    public static List<String> resolveOrSynthesize(
+            String rawContent,
+            String cleanContent,
+            String userPrompt,
+            AgentMode mode,
+            List<ToolCallRecord> toolRecords,
+            boolean vietnamese
+    ) {
+        if (isLikelyTranslationPrompt(userPrompt)) {
+            return Collections.emptyList();
+        }
         List<String> extracted = extractSuggestions(rawContent);
         if (!extracted.isEmpty()) {
             return extracted;
@@ -85,9 +99,11 @@ public final class FollowUpSuggestionHelper {
         String lower = cleanContent.toLowerCase(Locale.ROOT);
         boolean usedShizuku = false;
         boolean hadToolFailure = false;
+        boolean hadAnyTools = false;
         if (toolRecords != null) {
             for (ToolCallRecord rec : toolRecords) {
                 if (rec == null) continue;
+                hadAnyTools = true;
                 if (rec.getToolName().startsWith("adb_") || rec.getPrivilegeBadge().toLowerCase(Locale.ROOT).contains("shizuku")) {
                     usedShizuku = true;
                 }
@@ -117,11 +133,30 @@ public final class FollowUpSuggestionHelper {
             if (mentionsCode) {
                 out.add(vietnamese ? "Giải thích chi tiết từng bước" : "Explain step by step");
                 out.add(vietnamese ? "Áp dụng thay đổi này trong chế độ Code" : "Apply this in Code mode");
-            } else {
+            } else if (hadAnyTools || cleanContent.trim().length() >= 220) {
                 out.add(vietnamese ? "Tóm tắt thành các gạch đầu dòng ngắn" : "Summarize as concise bullet points");
                 out.add(vietnamese ? "Đưa ra ví dụ thực tế" : "Show a concrete example");
+            } else {
+                return Collections.emptyList();
             }
         }
         return Collections.unmodifiableList(out);
+    }
+
+    public static boolean isLikelyTranslationPrompt(String userPrompt) {
+        if (userPrompt == null) return false;
+        String lower = userPrompt.trim().toLowerCase(Locale.ROOT);
+        if (lower.isEmpty()) return false;
+        return lower.startsWith("dịch")
+                || lower.startsWith("translate")
+                || lower.contains("dịch sang")
+                || lower.contains("dịch câu")
+                || lower.contains("dịch đoạn")
+                || lower.contains("dịch giúp")
+                || lower.contains("translate to ")
+                || lower.contains("translate into ")
+                || lower.contains("in english")
+                || lower.contains("in vietnamese")
+                || lower.contains("sang tiếng ");
     }
 }

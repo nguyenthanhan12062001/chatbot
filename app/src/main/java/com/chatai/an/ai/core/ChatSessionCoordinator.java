@@ -1114,6 +1114,7 @@ public class ChatSessionCoordinator {
                                 followUps = FollowUpSuggestionHelper.resolveOrSynthesize(
                                         rawContent,
                                         finalContent,
+                                        latestUserPrompt,
                                         effectiveMode,
                                         finalRecords,
                                         vi

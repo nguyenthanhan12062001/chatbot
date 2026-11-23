@@ -170,9 +170,9 @@
     <string name="execution_state_completed">Hoàn tất</string>
     <string name="execution_state_stopped">Đã dừng</string>
     <string name="execution_state_failed">Yêu cầu thất bại</string>
-    <string name="thinking_process_title">Quá trình suy nghĩ</string>
-    <string name="thinking_process_toggle_show">Hiện suy luận</string>
-    <string name="thinking_process_toggle_hide">Ẩn suy luận</string>
+    <string name="thinking_process_title">Suy luận</string>
+    <string name="thinking_process_toggle_show">Xem</string>
+    <string name="thinking_process_toggle_hide">Ẩn</string>
     <string name="filter_all">Tất cả</string>
     <string name="filter_free">Miễn phí</string>
     <string name="filter_personal_api">API Cá Nhân</string>
@@ -421,6 +421,11 @@
     <string name="action_regenerate">Tạo lại</string>
     <string name="action_continue_in_code">Tiếp tục trong Code</string>
     <string name="cd_scroll_to_bottom">Cuộn xuống cuối</string>
+    <string name="scroll_new_messages">↓ Tin nhắn mới</string>
+    <string name="scroll_to_bottom_short">↓ Cuối</string>
+    <string name="action_more">Tùy chọn</string>
+    <string name="message_details_title">Chi tiết tin nhắn</string>
+    <string name="message_details_tokens">Token: %1$d vào · %2$d ra (%3$d tổng)</string>
     <string name="slash_cmd_code_desc">Chuyển sang chế độ Coding Agent tự chủ</string>
     <string name="slash_cmd_chat_desc">Chuyển sang chế độ Chat hội thoại</string>
     <string name="slash_cmd_context_desc">Kiểm tra ngữ cảnh &amp; nén lịch sử</string>
@@ -428,4 +433,35 @@
     <string name="slash_cmd_review_desc">Rà soát mã nguồn &amp; thay đổi gần đây</string>
     <string name="slash_cmd_new_desc">Tạo cuộc trò chuyện mới</string>
     <string name="slash_cmd_clear_desc">Xóa hàng đợi tin nhắn</string>
+
+    <!-- Wireless Debugging Pairing & ChatAI Server -->
+    <string name="settings_group_wireless_adb">Pairing via Wireless Debugging</string>
+    <string name="wireless_adb_title">ChatAI Server</string>
+    <string name="wireless_adb_status_running">ChatAI Server đang chạy</string>
+    <string name="wireless_adb_status_stopped">ChatAI Server chưa khởi chạy</string>
+    <string name="wireless_adb_status_starting">Đang khởi chạy ChatAI Server…</string>
+    <string name="wireless_adb_detail_running">UID %1$d (PID %2$d) • Quyền ADB đã sẵn sàng cho ChatAI</string>
+    <string name="wireless_adb_detail_paired">Đã ghép nối gỡ lỗi không dây • Nhấn Start để khởi chạy</string>
+    <string name="wireless_adb_detail_unpaired">Bật Gỡ lỗi không dây và nhấn Pairing để ghép nối</string>
+    <string name="wireless_adb_btn_pairing">Pairing</string>
+    <string name="wireless_adb_btn_start">Start</string>
+    <string name="wireless_adb_console_title">Console ChatAI Server</string>
+    <string name="wireless_adb_console_close">Đóng</string>
+    <string name="wireless_adb_console_retry">Thử lại</string>
+    <string name="wireless_adb_dev_opts_title">Cần bật Tùy chọn nhà phát triển</string>
+    <string name="wireless_adb_dev_opts_message">Thiết bị chưa bật Tùy chọn nhà phát triển (Developer Options).\n\nCách bật:\n1. Mở Cài đặt → Giới thiệu điện thoại\n2. Nhấn 7 lần vào \"Số bản dựng\" (Build number)\n3. Quay lại ChatAI và nhấn Pairing</string>
+    <string name="wireless_adb_dev_opts_open">Mở Cài đặt thiết bị</string>
+    <string name="wireless_adb_pairing_guide_toast">Mở Gỡ lỗi không dây → Ghép nối bằng mã ghép nối, rồi nhập mã PIN 6 số ngay trên thông báo.</string>
+    <string name="wireless_adb_notif_perm_message">Cấp quyền thông báo để ChatAI hiển thị nút nhập mã PIN ngay trên thanh trạng thái khi mở Gỡ lỗi không dây.</string>
+    <string name="wireless_adb_notif_perm_grant">Cấp quyền thông báo</string>
+    <string name="adb_pairing_channel_name">Ghép nối Gỡ lỗi không dây</string>
+    <string name="adb_pairing_channel_desc">Hiển thị thông báo nhập mã PIN 6 số cho Wireless Debugging</string>
+    <string name="adb_notif_searching_title">Đang tìm dịch vụ ghép nối…</string>
+    <string name="adb_notif_searching_body">Hãy mở Gỡ lỗi không dây → Ghép nối bằng mã ghép nối</string>
+    <string name="adb_notif_found_title">Pairing service found</string>
+    <string name="adb_notif_action_enter_code">Enter pairing code</string>
+    <string name="adb_notif_pairing_success_title">Pairing successful</string>
+    <string name="adb_notif_pairing_success_body">Quay lại ChatAI → Settings và nhấn Start để khởi chạy ChatAI Server.</string>
+    <string name="adb_notif_pairing_failed_title">Ghép nối thất bại</string>
+    <string name="adb_err_pairing_service_missing">Không tìm thấy dịch vụ Pairing. Hãy giữ cửa sổ mã PIN mở và thử lại.</string>
 </resources>

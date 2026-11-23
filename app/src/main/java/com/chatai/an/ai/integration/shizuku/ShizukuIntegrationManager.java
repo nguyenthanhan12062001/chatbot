@@ -8,11 +8,13 @@ import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.os.Looper;
 
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
 import com.chatai.an.BuildConfig;
+import com.chatai.an.ai.integration.adb.ChatAiServerManager;
 import com.chatai.an.domain.model.IntegrationStatus;
 
 import java.util.concurrent.CountDownLatch;
@@ -115,6 +117,7 @@ public class ShizukuIntegrationManager {
     private volatile String lastError = "";
     private volatile CountDownLatch bindLatch;
     private volatile boolean bindingInProgress = false;
+    private volatile ChatAiServerManager chatAiServerManager;
 
     private final ServiceConnection serviceConnection = new ServiceConnection() {
         @Override
@@ -196,12 +199,20 @@ public class ShizukuIntegrationManager {
         return stateLiveData;
     }
 
+    public void setChatAiServerManager(ChatAiServerManager chatAiServerManager) {
+        this.chatAiServerManager = chatAiServerManager;
+        refreshState();
+    }
+
     public boolean isReady() {
         ShizukuState s = inspectState();
         return s.binderAlive && s.permissionGranted && s.userServiceBound;
     }
 
     public ShizukuState refreshState() {
+        if (chatAiServerManager != null && Looper.myLooper() != Looper.getMainLooper()) {
+            chatAiServerManager.refreshServerStatusSync();
+        }
         ShizukuState current = inspectState();
         stateLiveData.postValue(current);
         return current;
@@ -282,6 +293,25 @@ public class ShizukuIntegrationManager {
     }
 
     public ShizukuState inspectState() {
+        ChatAiServerManager serverMgr = this.chatAiServerManager;
+        if (serverMgr != null) {
+            ChatAiServerManager.ServerState serverState = serverMgr.getCurrentStateSnapshot();
+            if (serverState != null && serverState.isRunning()) {
+                int uid = serverState.uid >= 0 ? serverState.uid : 2000;
+                PrivilegeLevel priv = mapUid(uid);
+                return new ShizukuState(
+                        IntegrationStatus.ACTIVE,
+                        true,
+                        true,
+                        true,
+                        true,
+                        uid,
+                        priv,
+                        "ChatAI Server Active • " + priv.getLabel()
+                );
+            }
+        }
+
         boolean installed = isShizukuInstalled();
         boolean binderAlive = false;
         boolean preV11 = false;
@@ -468,9 +498,15 @@ public class ShizukuIntegrationManager {
     }
 
     public ShellResult executeShell(String command, String workdir, int timeoutSeconds) throws Exception {
+        ChatAiServerManager serverMgr = this.chatAiServerManager;
+        if (serverMgr != null && serverMgr.isServerAliveSync()) {
+            ChatAiServerManager.ShellResult res = serverMgr.executeShell(command, workdir, timeoutSeconds);
+            return new ShellResult(res.exitCode, res.stdout, res.stderr, res.timedOut, res.uid);
+        }
+
         ShizukuState state = inspectState();
         if (!state.binderAlive) {
-            throw new IllegalStateException("Shizuku service is not running.");
+            throw new IllegalStateException("ChatAI Server / Shizuku service is not running.");
         }
         if (!state.permissionGranted) {
             throw new SecurityException("Shizuku permission is not granted for ChatAI.");

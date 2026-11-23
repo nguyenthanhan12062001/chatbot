@@ -38,6 +38,7 @@ import androidx.core.view.WindowInsetsCompat;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.recyclerview.widget.SimpleItemAnimator;
 
 import com.chatai.an.R;
 import com.chatai.an.ai.core.ChatSessionCoordinator;
@@ -112,7 +113,14 @@ public class MainActivity extends AppCompatActivity {
     private AgentMode currentAgentMode = AgentMode.CHAT;
     private ChatSessionCoordinator.ContextMetrics currentContextMetrics = ChatSessionCoordinator.ContextMetrics.empty();
     private ShizukuIntegrationManager.ShizukuState currentShizukuState;
-    private boolean userScrolledUp = false;
+    private LinearLayoutManager msgLayoutManager;
+    private boolean autoScrollEnabled = true;
+    private boolean hasUnreadBelow = false;
+    private boolean isProgrammaticScroll = false;
+    private String lastObservedConversationId = null;
+    private int lastObservedMsgCount = 0;
+    private String lastObservedTailId = null;
+    private int lastObservedTailSignature = 0;
 
     private File pendingCameraFile;
     private boolean pendingStartBubbleAfterOverlayPerm = false;
@@ -319,18 +327,39 @@ public class MainActivity extends AppCompatActivity {
                 handleSourceNavigation(urlOrPath);
             }
         });
-        LinearLayoutManager msgLayoutManager = new LinearLayoutManager(this);
+        msgLayoutManager = new LinearLayoutManager(this);
         msgLayoutManager.setStackFromEnd(true);
         binding.rvMessages.setLayoutManager(msgLayoutManager);
         binding.rvMessages.setAdapter(messageAdapter);
+        if (binding.rvMessages.getItemAnimator() instanceof SimpleItemAnimator) {
+            ((SimpleItemAnimator) binding.rvMessages.getItemAnimator()).setSupportsChangeAnimations(false);
+        }
         binding.rvMessages.addOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
+            public void onScrollStateChanged(@NonNull RecyclerView recyclerView, int newState) {
+                if (newState == RecyclerView.SCROLL_STATE_DRAGGING) {
+                    isProgrammaticScroll = false;
+                } else if (newState == RecyclerView.SCROLL_STATE_IDLE) {
+                    isProgrammaticScroll = false;
+                    if (isMessagesAtBottom(recyclerView)) {
+                        autoScrollEnabled = true;
+                        hasUnreadBelow = false;
+                    }
+                    updateScrollToBottomPill();
+                }
+            }
+
+            @Override
             public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
-                boolean canScrollDown = recyclerView.canScrollVertically(1);
-                userScrolledUp = canScrollDown;
-                binding.btnScrollToBottom.setVisibility(
-                        canScrollDown && messageAdapter.getItemCount() > 0 ? View.VISIBLE : View.GONE
-                );
+                if (!isProgrammaticScroll) {
+                    if (dy < 0 && !isMessagesAtBottom(recyclerView)) {
+                        autoScrollEnabled = false;
+                    } else if (dy > 0 && isMessagesAtBottom(recyclerView)) {
+                        autoScrollEnabled = true;
+                        hasUnreadBelow = false;
+                    }
+                }
+                updateScrollToBottomPill();
             }
         });
 
@@ -430,12 +459,10 @@ public class MainActivity extends AppCompatActivity {
         binding.btnContextMeter.setOnClickListener(v -> showContextInspectorDialog());
 
         binding.btnScrollToBottom.setOnClickListener(v -> {
-            userScrolledUp = false;
-            int count = messageAdapter.getItemCount();
-            if (count > 0) {
-                binding.rvMessages.smoothScrollToPosition(count - 1);
-            }
-            binding.btnScrollToBottom.setVisibility(View.GONE);
+            autoScrollEnabled = true;
+            hasUnreadBelow = false;
+            updateScrollToBottomPill();
+            scrollMessagesToBottom();
         });
 
         binding.btnQueueClear.setOnClickListener(v -> viewModel.clearFollowUpQueue());
@@ -465,8 +492,6 @@ public class MainActivity extends AppCompatActivity {
             sheet.show(getSupportFragmentManager(), "attachment_picker");
         });
 
-        binding.btnAgentMode.setOnClickListener(v -> viewModel.toggleAgentMode());
-
         binding.btnDeepThinking.setOnClickListener(v -> {
             if (currentThinkingState == ThinkingState.UNSUPPORTED && currentModel != null) {
                 CapabilityStatus status = currentModel.getCapabilityStatus(ModelCapability.DEEP_THINKING);
@@ -484,8 +509,6 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        binding.btnProjectTag.setOnClickListener(v -> showProjectTagDialog());
-
         binding.btnStop.setOnClickListener(v -> viewModel.stopGeneration());
 
         binding.btnSend.setOnClickListener(v -> {
@@ -496,6 +519,9 @@ public class MainActivity extends AppCompatActivity {
                 binding.etMessageInput.setText("");
                 return;
             }
+            autoScrollEnabled = true;
+            hasUnreadBelow = false;
+            updateScrollToBottomPill();
             viewModel.sendOrQueueMessage(text);
             binding.etMessageInput.setText("");
         });
@@ -651,9 +677,6 @@ public class MainActivity extends AppCompatActivity {
 
         viewModel.getAgentMode().observe(this, mode -> {
             currentAgentMode = mode != null ? mode : AgentMode.CHAT;
-            boolean isCoding = currentAgentMode == AgentMode.CODING;
-            binding.tvAgentMode.setText(isCoding ? R.string.mode_coding_short : R.string.mode_chat_short);
-            binding.ivAgentMode.setImageResource(isCoding ? R.drawable.ic_build : R.drawable.ic_chat_spark);
             messageAdapter.setAgentMode(currentAgentMode);
             styleAgentModePill();
         });
@@ -669,8 +692,8 @@ public class MainActivity extends AppCompatActivity {
         });
 
         viewModel.getPendingToolConfirmation().observe(this, pending -> {
-            if (pending != null && messageAdapter.getItemCount() > 0 && !userScrolledUp) {
-                binding.rvMessages.smoothScrollToPosition(messageAdapter.getItemCount() - 1);
+            if (pending != null && messageAdapter.getItemCount() > 0 && autoScrollEnabled) {
+                scrollMessagesToBottom();
             }
         });
 
@@ -690,11 +713,6 @@ public class MainActivity extends AppCompatActivity {
         });
 
         viewModel.getActiveProjectId().observe(this, projectId -> {
-            if (projectId != null && !projectId.trim().isEmpty()) {
-                binding.btnProjectTag.setText(getString(R.string.project_tag_active, projectId.trim()));
-            } else {
-                binding.btnProjectTag.setText(R.string.project_tag_none);
-            }
             updateWorkspaceChipText();
             styleProjectTagPill();
         });
@@ -762,14 +780,40 @@ public class MainActivity extends AppCompatActivity {
         });
 
         viewModel.getMessages().observe(this, messages -> {
+            int count = messages != null ? messages.size() : 0;
+            String tailId = count > 0 ? messages.get(count - 1).getId() : null;
+            int tailSig = 0;
+            if (count > 0) {
+                Message tail = messages.get(count - 1);
+                tailSig = java.util.Objects.hash(
+                        tail.getContent().length(),
+                        tail.getThinkingContent().length(),
+                        tail.getTimelineEntries().size(),
+                        tail.getToolRecords().size(),
+                        tail.isError()
+                );
+            }
+            boolean contentChangedOrAdded = count > lastObservedMsgCount
+                    || (count > 0 && (!java.util.Objects.equals(tailId, lastObservedTailId) || tailSig != lastObservedTailSignature));
+            lastObservedMsgCount = count;
+            lastObservedTailId = tailId;
+            lastObservedTailSignature = tailSig;
+
             messageAdapter.submitList(messages);
-            boolean hasMessages = messages != null && !messages.isEmpty();
+            boolean hasMessages = count > 0;
             binding.emptyChatContainer.setVisibility(hasMessages ? View.GONE : View.VISIBLE);
             binding.rvMessages.setVisibility(hasMessages ? View.VISIBLE : View.GONE);
             if (!hasMessages) {
-                binding.btnScrollToBottom.setVisibility(View.GONE);
-            } else if (!userScrolledUp) {
-                binding.rvMessages.scrollToPosition(messages.size() - 1);
+                autoScrollEnabled = true;
+                hasUnreadBelow = false;
+                updateScrollToBottomPill();
+            } else if (autoScrollEnabled) {
+                hasUnreadBelow = false;
+                scrollMessagesToBottom();
+                updateScrollToBottomPill();
+            } else if (contentChangedOrAdded) {
+                hasUnreadBelow = true;
+                updateScrollToBottomPill();
             }
         });
 
@@ -780,9 +824,18 @@ public class MainActivity extends AppCompatActivity {
             binding.rvSidebarHistory.setVisibility(empty ? View.GONE : View.VISIBLE);
         });
 
-        viewModel.getActiveConversationId().observe(this, activeId ->
-                sidebarAdapter.setActiveConversationId(activeId)
-        );
+        viewModel.getActiveConversationId().observe(this, activeId -> {
+            sidebarAdapter.setActiveConversationId(activeId);
+            if (!java.util.Objects.equals(activeId, lastObservedConversationId)) {
+                lastObservedConversationId = activeId;
+                autoScrollEnabled = true;
+                hasUnreadBelow = false;
+                lastObservedMsgCount = 0;
+                lastObservedTailId = null;
+                lastObservedTailSignature = 0;
+                updateScrollToBottomPill();
+            }
+        });
     }
 
     private void renderFollowUpQueue(List<ChatSessionCoordinator.QueuedMessage> queue) {
@@ -897,10 +950,10 @@ public class MainActivity extends AppCompatActivity {
         int stroke = ThemeApplier.dpToPxInt(this, 1f);
         binding.btnScrollToBottom.setBackground(GradientDrawableFactory.createPill(
                 activePalette.getSurfaceColor(),
-                activePalette.getBorderColor(),
-                stroke
+                activePalette.getPrimaryColor(),
+                ThemeApplier.dpToPxInt(this, 1.25f)
         ));
-        binding.btnScrollToBottom.setColorFilter(activePalette.getPrimaryColor());
+        binding.btnScrollToBottom.setTextColor(activePalette.getPrimaryColor());
 
         binding.llFollowUpQueueContainer.setBackground(GradientDrawableFactory.createSurfaceCard(
                 activePalette.getSurfaceVariantColor(),
@@ -1063,22 +1116,6 @@ public class MainActivity extends AppCompatActivity {
             binding.btnModeCode.setBackground(null);
             binding.btnModeCode.setTextColor(activePalette.getTextSecondaryColor());
         }
-
-        if (isCoding) {
-            binding.btnAgentMode.setBackground(
-                    GradientDrawableFactory.createLinearGradient(activePalette, 999f)
-            );
-            binding.ivAgentMode.setColorFilter(activePalette.getOnPrimaryColor());
-            binding.tvAgentMode.setTextColor(activePalette.getOnPrimaryColor());
-        } else {
-            binding.btnAgentMode.setBackground(GradientDrawableFactory.createPill(
-                    activePalette.getSurfaceVariantColor(),
-                    activePalette.getBorderColor(),
-                    stroke
-            ));
-            binding.ivAgentMode.setColorFilter(activePalette.getPrimaryColor());
-            binding.tvAgentMode.setTextColor(activePalette.getTextPrimaryColor());
-        }
     }
 
     private void styleShizukuPill() {
@@ -1194,12 +1231,6 @@ public class MainActivity extends AppCompatActivity {
         boolean hasProject = proj != null && !proj.trim().isEmpty();
         int stroke = ThemeApplier.dpToPxInt(this, 1f);
         if (hasProject) {
-            binding.btnProjectTag.setBackground(GradientDrawableFactory.createPill(
-                    ThemeApplier.blendWithAlpha(activePalette.getPrimaryColor(), 30),
-                    activePalette.getPrimaryColor(),
-                    stroke
-            ));
-            binding.btnProjectTag.setTextColor(activePalette.getPrimaryColor());
             binding.btnWorkspaceChip.setBackground(GradientDrawableFactory.createPill(
                     ThemeApplier.blendWithAlpha(activePalette.getPrimaryColor(), 24),
                     activePalette.getPrimaryColor(),
@@ -1208,12 +1239,6 @@ public class MainActivity extends AppCompatActivity {
             binding.ivWorkspaceChip.setColorFilter(activePalette.getPrimaryColor());
             binding.tvWorkspaceChip.setTextColor(activePalette.getPrimaryColor());
         } else {
-            binding.btnProjectTag.setBackground(GradientDrawableFactory.createPill(
-                    activePalette.getSurfaceVariantColor(),
-                    activePalette.getBorderColor(),
-                    stroke
-            ));
-            binding.btnProjectTag.setTextColor(activePalette.getTextSecondaryColor());
             binding.btnWorkspaceChip.setBackground(GradientDrawableFactory.createPill(
                     activePalette.getSurfaceVariantColor(),
                     activePalette.getBorderColor(),
@@ -1221,6 +1246,50 @@ public class MainActivity extends AppCompatActivity {
             ));
             binding.ivWorkspaceChip.setColorFilter(activePalette.getTextSecondaryColor());
             binding.tvWorkspaceChip.setTextColor(activePalette.getTextPrimaryColor());
+        }
+    }
+
+    private boolean isMessagesAtBottom(RecyclerView rv) {
+        if (rv == null || messageAdapter == null || messageAdapter.getItemCount() == 0) {
+            return true;
+        }
+        int range = rv.computeVerticalScrollRange();
+        int extent = rv.computeVerticalScrollExtent();
+        if (range <= extent) {
+            return true;
+        }
+        int offset = rv.computeVerticalScrollOffset();
+        int slop = ThemeApplier.dpToPxInt(this, 16f);
+        return (offset + extent >= range - slop) || !rv.canScrollVertically(1);
+    }
+
+    private void scrollMessagesToBottom() {
+        int count = messageAdapter != null ? messageAdapter.getItemCount() : 0;
+        if (count <= 0 || msgLayoutManager == null) return;
+        isProgrammaticScroll = true;
+        msgLayoutManager.scrollToPositionWithOffset(count - 1, -1000000);
+        binding.rvMessages.post(() -> {
+            if (autoScrollEnabled && messageAdapter.getItemCount() > 0) {
+                int remaining = binding.rvMessages.computeVerticalScrollRange()
+                        - binding.rvMessages.computeVerticalScrollExtent()
+                        - binding.rvMessages.computeVerticalScrollOffset();
+                if (remaining > 0) {
+                    binding.rvMessages.scrollBy(0, remaining);
+                }
+            }
+            isProgrammaticScroll = false;
+        });
+    }
+
+    private void updateScrollToBottomPill() {
+        if (binding == null || messageAdapter == null) return;
+        boolean hasMessages = messageAdapter.getItemCount() > 0;
+        boolean show = hasMessages && !autoScrollEnabled && (hasUnreadBelow || !isMessagesAtBottom(binding.rvMessages));
+        if (show) {
+            binding.btnScrollToBottom.setText(hasUnreadBelow ? R.string.scroll_new_messages : R.string.scroll_to_bottom_short);
+            binding.btnScrollToBottom.setVisibility(View.VISIBLE);
+        } else {
+            binding.btnScrollToBottom.setVisibility(View.GONE);
         }
     }
 

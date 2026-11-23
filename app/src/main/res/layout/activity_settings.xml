@@ -406,6 +406,93 @@
                 </LinearLayout>
             </LinearLayout>
 
+            <!-- Group: Pairing via Wireless Debugging -->
+            <TextView
+                android:id="@+id/tv_group_wireless_adb"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="8dp"
+                android:text="@string/settings_group_wireless_adb"
+                android:textAllCaps="true"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+
+            <LinearLayout
+                android:id="@+id/card_wireless_adb"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="20dp"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <!-- Live ChatAI Server Status Card -->
+                <LinearLayout
+                    android:id="@+id/card_wireless_adb_status"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:paddingHorizontal="14dp"
+                    android:paddingVertical="12dp">
+
+                    <View
+                        android:id="@+id/view_wireless_adb_dot"
+                        android:layout_width="10dp"
+                        android:layout_height="10dp"
+                        android:layout_marginEnd="12dp" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:id="@+id/tv_wireless_adb_status_title"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/wireless_adb_status_stopped"
+                            android:textSize="15sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/tv_wireless_adb_status_detail"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="@string/wireless_adb_detail_unpaired"
+                            android:textSize="12sp" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <!-- Two Primary Action Buttons: Pairing & Start -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:orientation="horizontal">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btn_wireless_adb_pairing"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="6dp"
+                        android:layout_weight="1"
+                        android:minHeight="48dp"
+                        android:text="@string/wireless_adb_btn_pairing" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btn_wireless_adb_start"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="6dp"
+                        android:layout_weight="1"
+                        android:minHeight="48dp"
+                        android:text="@string/wireless_adb_btn_start" />
+                </LinearLayout>
+            </LinearLayout>
+
             <!-- Group: Appearance -->
             <TextView
                 android:id="@+id/tv_group_appearance"

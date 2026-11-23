@@ -12,6 +12,7 @@ import android.graphics.Typeface;
 import android.net.Uri;
 import android.text.Layout;
 import android.text.Spannable;
+import android.text.TextUtils;
 import android.text.style.URLSpan;
 import android.util.Base64;
 import android.view.Gravity;
@@ -24,6 +25,7 @@ import android.widget.HorizontalScrollView;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.PopupMenu;
 import android.widget.TableLayout;
 import android.widget.TableRow;
 import android.widget.TextView;
@@ -31,8 +33,11 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.core.content.ContextCompat;
+import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 import com.bumptech.glide.Glide;
 import com.chatai.an.R;
@@ -100,30 +105,97 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.MessageV
     }
 
     public void submitList(List<Message> newMessages) {
-        messages.clear();
-        if (newMessages != null) {
-            messages.addAll(newMessages);
+        List<Message> incoming = newMessages != null ? new ArrayList<>(newMessages) : new ArrayList<>();
+        if (messages.isEmpty()) {
+            messages.addAll(incoming);
+            if (!messages.isEmpty()) {
+                notifyItemRangeInserted(0, messages.size());
+            }
+            return;
         }
-        notifyDataSetChanged();
+        if (incoming.isEmpty()) {
+            int oldSize = messages.size();
+            messages.clear();
+            notifyItemRangeRemoved(0, oldSize);
+            return;
+        }
+
+        // Fast path during streaming: only the tail item updated
+        int oldSize = messages.size();
+        if (incoming.size() == oldSize && sameMessageIds(messages, incoming)) {
+            int firstDiff = -1;
+            int lastDiff = -1;
+            for (int i = 0; i < oldSize; i++) {
+                if (!areMessagesVisuallyEqual(messages.get(i), incoming.get(i))) {
+                    if (firstDiff < 0) firstDiff = i;
+                    lastDiff = i;
+                }
+            }
+            messages.clear();
+            messages.addAll(incoming);
+            if (firstDiff >= 0) {
+                for (int i = firstDiff; i <= lastDiff; i++) {
+                    notifyItemChanged(i);
+                }
+            }
+            return;
+        }
+
+        List<Message> oldSnapshot = new ArrayList<>(messages);
+        DiffUtil.DiffResult diffResult = DiffUtil.calculateDiff(new DiffUtil.Callback() {
+            @Override
+            public int getOldListSize() {
+                return oldSnapshot.size();
+            }
+
+            @Override
+            public int getNewListSize() {
+                return incoming.size();
+            }
+
+            @Override
+            public boolean areItemsTheSame(int oldItemPosition, int newItemPosition) {
+                String oldId = oldSnapshot.get(oldItemPosition).getId();
+                String newId = incoming.get(newItemPosition).getId();
+                return oldId != null && oldId.equals(newId);
+            }
+
+            @Override
+            public boolean areContentsTheSame(int oldItemPosition, int newItemPosition) {
+                boolean wasLast = oldItemPosition == oldSnapshot.size() - 1;
+                boolean isLast = newItemPosition == incoming.size() - 1;
+                if (wasLast != isLast) return false;
+                return areMessagesVisuallyEqual(oldSnapshot.get(oldItemPosition), incoming.get(newItemPosition));
+            }
+        });
+        messages.clear();
+        messages.addAll(incoming);
+        diffResult.dispatchUpdatesTo(this);
     }
 
     public void setPalette(ThemePalette palette) {
         this.palette = palette;
-        notifyDataSetChanged();
+        if (!messages.isEmpty()) {
+            notifyItemRangeChanged(0, messages.size());
+        }
     }
 
     public void setAgentMode(AgentMode mode) {
         AgentMode resolved = mode != null ? mode : AgentMode.CHAT;
         if (this.currentAgentMode != resolved) {
             this.currentAgentMode = resolved;
-            notifyDataSetChanged();
+            if (!messages.isEmpty()) {
+                notifyItemChanged(messages.size() - 1);
+            }
         }
     }
 
     public void setAiBusy(boolean busy) {
         if (this.aiBusy != busy) {
             this.aiBusy = busy;
-            notifyDataSetChanged();
+            if (!messages.isEmpty()) {
+                notifyItemChanged(messages.size() - 1);
+            }
         }
     }
 
@@ -236,31 +308,14 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.MessageV
         holder.tvModel.setText(modelLabel != null ? modelLabel : "");
         holder.tvModel.setVisibility(!isUser && modelLabel != null && !modelLabel.isEmpty() ? View.VISIBLE : View.GONE);
 
-        AccessType accessType = message.getAccessType();
-        if (!isUser && accessType != null) {
-            holder.tvAccessBadge.setVisibility(View.VISIBLE);
-            if (accessType == AccessType.FREE) {
-                holder.tvAccessBadge.setText(R.string.badge_free);
-            } else if (accessType == AccessType.LOCAL) {
-                holder.tvAccessBadge.setText(R.string.badge_local);
-            } else {
-                holder.tvAccessBadge.setText(R.string.badge_api_key);
-            }
-        } else {
-            holder.tvAccessBadge.setVisibility(View.GONE);
-        }
-
-        holder.tvDeepThinking.setVisibility(message.isDeepThinkingEnabled() ? View.VISIBLE : View.GONE);
+        // Keep per-message header & footer uncluttered; pricing/deep-thinking/tokens belong in selector or overflow details
+        holder.tvAccessBadge.setVisibility(View.GONE);
+        holder.tvDeepThinking.setVisibility(View.GONE);
         holder.tvEdited.setVisibility(message.getUpdatedAt() > message.getCreatedAt() + 1000L ? View.VISIBLE : View.GONE);
         holder.tvTime.setText(UiFormatters.formatTime(message.getCreatedAt()));
+        holder.tvTokens.setVisibility(View.GONE);
 
         TokenUsage usage = message.getTokenUsage();
-        if (usage != null && usage.hasAnyUsage()) {
-            holder.tvTokens.setVisibility(View.VISIBLE);
-            holder.tvTokens.setText(usage.getPromptTokens() + "·" + usage.getCompletionTokens() + " (" + usage.getTotalTokens() + ")");
-        } else {
-            holder.tvTokens.setVisibility(View.GONE);
-        }
 
         int userBubbleTextColor = Color.WHITE;
         int assistantTextColor = palette != null ? palette.getTextPrimaryColor() : 0xFF1F1410;
@@ -303,28 +358,9 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.MessageV
             holder.tvRole.setTextColor(palette.getTextPrimaryColor());
             holder.tvModel.setTextColor(palette.getTextSecondaryColor());
             holder.tvTime.setTextColor(palette.getTextSecondaryColor());
-            holder.tvTokens.setTextColor(palette.getTextSecondaryColor());
             holder.tvEdited.setTextColor(palette.getTextSecondaryColor());
-            holder.tvTime.setAlpha(0.78f);
-            holder.tvTokens.setAlpha(0.75f);
-            holder.tvEdited.setAlpha(0.78f);
-
-            holder.tvDeepThinking.setBackground(GradientDrawableFactory.createPill(
-                    ThemeApplier.blendWithAlpha(palette.getPrimaryColor(), 28),
-                    0,
-                    0
-            ));
-            holder.tvDeepThinking.setTextColor(palette.getPrimaryColor());
-
-            int accessColor = accessType == AccessType.FREE
-                    ? ContextCompat.getColor(ctx, R.color.status_supported)
-                    : palette.getPrimaryColor();
-            holder.tvAccessBadge.setBackground(GradientDrawableFactory.createPill(
-                    ThemeApplier.blendWithAlpha(accessColor, 24),
-                    0,
-                    0
-            ));
-            holder.tvAccessBadge.setTextColor(accessColor);
+            holder.tvTime.setAlpha(0.75f);
+            holder.tvEdited.setAlpha(0.75f);
 
             holder.ivThinkingIcon.setColorFilter(palette.getPrimaryColor());
             holder.tvThinkingHeader.setTextColor(palette.getTextPrimaryColor());
@@ -332,13 +368,9 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.MessageV
             holder.tvThinkingContent.setTextColor(palette.getTextSecondaryColor());
 
             holder.btnCopy.setColorFilter(palette.getTextSecondaryColor());
-            holder.btnRegenerate.setColorFilter(palette.getTextSecondaryColor());
-            holder.btnEdit.setColorFilter(palette.getTextSecondaryColor());
-            holder.btnDelete.setColorFilter(palette.getTextSecondaryColor());
-            holder.btnCopy.setAlpha(0.76f);
-            holder.btnRegenerate.setAlpha(0.76f);
-            holder.btnEdit.setAlpha(0.76f);
-            holder.btnDelete.setAlpha(0.76f);
+            holder.btnMore.setColorFilter(palette.getTextSecondaryColor());
+            holder.btnCopy.setAlpha(0.74f);
+            holder.btnMore.setAlpha(0.74f);
         } else {
             float[] userRadii = new float[]{r, r, r, r, tailR, tailR, r, r};
             float[] assistantRadii = new float[]{tailR, tailR, r, r, r, r, r, r};
@@ -467,21 +499,59 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.MessageV
         // Expandable Sources Accordion (below assistant bubble)
         bindSourcesAccordion(holder, ctx, message, isUser);
 
-        // Footer actions (hide edit/regenerate/delete while active streaming placeholder)
+        // Footer actions (compact Copy + Overflow menu; hide actions while streaming placeholder)
         holder.btnCopy.setOnClickListener(v -> {
             if (listener != null) listener.onCopyMessage(message);
         });
-        holder.btnRegenerate.setVisibility(isStreaming ? View.GONE : View.VISIBLE);
-        holder.btnRegenerate.setOnClickListener(v -> {
-            if (listener != null) listener.onRegenerateMessage(message);
-        });
-        holder.btnEdit.setVisibility(isStreaming ? View.GONE : View.VISIBLE);
-        holder.btnEdit.setOnClickListener(v -> {
-            if (listener != null) listener.onEditMessage(message);
-        });
-        holder.btnDelete.setVisibility(isStreaming ? View.GONE : View.VISIBLE);
-        holder.btnDelete.setOnClickListener(v -> {
-            if (listener != null) listener.onDeleteMessage(message);
+        holder.btnMore.setVisibility(isStreaming ? View.GONE : View.VISIBLE);
+        holder.btnMore.setOnClickListener(v -> {
+            try {
+                PopupMenu popup = new PopupMenu(ctx, v);
+                if (!isUser) {
+                    popup.getMenu().add(0, 1, 0, R.string.action_regenerate);
+                }
+                popup.getMenu().add(0, 2, 1, R.string.action_edit);
+                if (usage != null && usage.hasAnyUsage()) {
+                    popup.getMenu().add(0, 4, 2, R.string.message_details_title);
+                }
+                popup.getMenu().add(0, 3, 3, R.string.action_delete);
+                popup.setOnMenuItemClickListener(item -> {
+                    int id = item.getItemId();
+                    if (id == 1 && listener != null) {
+                        listener.onRegenerateMessage(message);
+                        return true;
+                    } else if (id == 2 && listener != null) {
+                        listener.onEditMessage(message);
+                        return true;
+                    } else if (id == 3 && listener != null) {
+                        listener.onDeleteMessage(message);
+                        return true;
+                    } else if (id == 4 && usage != null) {
+                        String detailsText = ctx.getString(
+                                R.string.message_details_tokens,
+                                usage.getPromptTokens(),
+                                usage.getCompletionTokens(),
+                                usage.getTotalTokens()
+                        );
+                        if (ctx instanceof android.app.Activity) {
+                            new MaterialAlertDialogBuilder(ctx)
+                                    .setTitle(R.string.message_details_title)
+                                    .setMessage(detailsText)
+                                    .setPositiveButton(android.R.string.ok, null)
+                                    .show();
+                        } else {
+                            Toast.makeText(ctx, detailsText, Toast.LENGTH_LONG).show();
+                        }
+                        return true;
+                    }
+                    return false;
+                });
+                popup.show();
+            } catch (Exception e) {
+                if (listener != null) {
+                    listener.onCopyMessage(message);
+                }
+            }
         });
 
         // Continue in Code & Follow-Up Chips (only on latest completed non-error assistant message)
@@ -1219,20 +1289,28 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.MessageV
         }
 
         if (showSuggestions) {
+            if (holder.hsvFollowUpChips != null) {
+                holder.hsvFollowUpChips.setVisibility(View.VISIBLE);
+            }
             holder.followUpChipsContainer.setVisibility(View.VISIBLE);
             for (String suggestion : suggestions) {
                 if (suggestion == null || suggestion.trim().isEmpty()) continue;
+                String cleanSuggestion = suggestion.trim();
                 TextView chip = new TextView(ctx);
-                chip.setText(suggestion.trim());
-                chip.setTextSize(12f);
+                chip.setText(cleanSuggestion);
+                chip.setTextSize(11.5f);
                 chip.setTextColor(textPrimary);
                 chip.setGravity(Gravity.CENTER_VERTICAL);
-                chip.setMinHeight(ThemeApplier.dpToPxInt(ctx, 34f));
+                chip.setSingleLine(true);
+                chip.setMaxLines(1);
+                chip.setEllipsize(TextUtils.TruncateAt.END);
+                chip.setMaxWidth(ThemeApplier.dpToPxInt(ctx, 230f));
+                chip.setMinHeight(ThemeApplier.dpToPxInt(ctx, 30f));
                 chip.setPadding(
-                        ThemeApplier.dpToPxInt(ctx, 12f),
-                        ThemeApplier.dpToPxInt(ctx, 6f),
-                        ThemeApplier.dpToPxInt(ctx, 12f),
-                        ThemeApplier.dpToPxInt(ctx, 6f)
+                        ThemeApplier.dpToPxInt(ctx, 11f),
+                        ThemeApplier.dpToPxInt(ctx, 5f),
+                        ThemeApplier.dpToPxInt(ctx, 11f),
+                        ThemeApplier.dpToPxInt(ctx, 5f)
                 );
                 chip.setBackground(GradientDrawableFactory.createPill(
                         surfaceColor,
@@ -1243,14 +1321,17 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.MessageV
                         ViewGroup.LayoutParams.WRAP_CONTENT,
                         ViewGroup.LayoutParams.WRAP_CONTENT
                 );
-                lp.bottomMargin = ThemeApplier.dpToPxInt(ctx, 4f);
+                lp.setMarginEnd(ThemeApplier.dpToPxInt(ctx, 6f));
                 chip.setLayoutParams(lp);
                 chip.setClickable(true);
                 chip.setFocusable(true);
-                chip.setOnClickListener(v -> listener.onFollowUpClicked(suggestion.trim()));
+                chip.setOnClickListener(v -> listener.onFollowUpClicked(cleanSuggestion));
                 holder.followUpChipsContainer.addView(chip);
             }
         } else {
+            if (holder.hsvFollowUpChips != null) {
+                holder.hsvFollowUpChips.setVisibility(View.GONE);
+            }
             holder.followUpChipsContainer.setVisibility(View.GONE);
         }
     }
@@ -1398,13 +1479,12 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.MessageV
         final TextView tvTokens;
         final View spacerFooter;
         final ImageButton btnCopy;
-        final ImageButton btnRegenerate;
-        final ImageButton btnEdit;
-        final ImageButton btnDelete;
+        final ImageButton btnMore;
         final MaxWidthLinearLayout postActionsContainer;
         final LinearLayout btnHandoverCode;
         final ImageView ivHandoverCode;
         final TextView tvHandoverCode;
+        final HorizontalScrollView hsvFollowUpChips;
         final LinearLayout followUpChipsContainer;
 
         MessageViewHolder(@NonNull View itemView) {
@@ -1435,14 +1515,119 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.MessageV
             tvTokens = itemView.findViewById(R.id.tv_message_tokens);
             spacerFooter = itemView.findViewById(R.id.spacer_footer_actions);
             btnCopy = itemView.findViewById(R.id.btn_msg_copy);
-            btnRegenerate = itemView.findViewById(R.id.btn_msg_regenerate);
-            btnEdit = itemView.findViewById(R.id.btn_msg_edit);
-            btnDelete = itemView.findViewById(R.id.btn_msg_delete);
+            btnMore = itemView.findViewById(R.id.btn_msg_more);
             postActionsContainer = itemView.findViewById(R.id.ll_post_message_actions);
             btnHandoverCode = itemView.findViewById(R.id.btn_msg_handover_code);
             ivHandoverCode = itemView.findViewById(R.id.iv_handover_code);
             tvHandoverCode = itemView.findViewById(R.id.tv_handover_code);
+            hsvFollowUpChips = itemView.findViewById(R.id.hsv_follow_up_chips);
             followUpChipsContainer = itemView.findViewById(R.id.ll_follow_up_chips_container);
         }
+    }
+
+    private static boolean sameMessageIds(List<Message> a, List<Message> b) {
+        if (a.size() != b.size()) return false;
+        for (int i = 0; i < a.size(); i++) {
+            String idA = a.get(i).getId();
+            String idB = b.get(i).getId();
+            if (idA == null ? idB != null : !idA.equals(idB)) return false;
+        }
+        return true;
+    }
+
+    private static boolean areMessagesVisuallyEqual(Message a, Message b) {
+        if (a == b) return true;
+        if (a == null || b == null) return false;
+        if (a.getRole() != b.getRole()
+                || a.isError() != b.isError()
+                || a.isDeepThinkingEnabled() != b.isDeepThinkingEnabled()
+                || a.getCreatedAt() != b.getCreatedAt()
+                || a.getUpdatedAt() != b.getUpdatedAt()) {
+            return false;
+        }
+        if (!strEq(a.getContent(), b.getContent())
+                || !strEq(a.getThinkingContent(), b.getThinkingContent())
+                || !strEq(a.getModelId(), b.getModelId())
+                || a.getAccessType() != b.getAccessType()
+                || !a.getFollowUpSuggestions().equals(b.getFollowUpSuggestions())) {
+            return false;
+        }
+        if (!areTokenUsagesEqual(a.getTokenUsage(), b.getTokenUsage())) return false;
+        if (!areAttachmentsEqual(a.getAttachments(), b.getAttachments())) return false;
+        if (!areToolRecordsEqual(a.getToolRecords(), b.getToolRecords())) return false;
+        if (!areTimelineEqual(a.getTimelineEntries(), b.getTimelineEntries())) return false;
+        return areSourcesEqual(a.getSources(), b.getSources());
+    }
+
+    private static boolean strEq(String s1, String s2) {
+        return s1 == null ? s2 == null : s1.equals(s2);
+    }
+
+    private static boolean areTokenUsagesEqual(TokenUsage a, TokenUsage b) {
+        if (a == b) return true;
+        if (a == null || b == null) return false;
+        return a.getPromptTokens() == b.getPromptTokens()
+                && a.getCompletionTokens() == b.getCompletionTokens()
+                && a.getTotalTokens() == b.getTotalTokens();
+    }
+
+    private static boolean areAttachmentsEqual(List<Attachment> a, List<Attachment> b) {
+        if (a.size() != b.size()) return false;
+        for (int i = 0; i < a.size(); i++) {
+            Attachment x = a.get(i);
+            Attachment y = b.get(i);
+            if (!strEq(x.getId(), y.getId()) || !strEq(x.getLocalPath(), y.getLocalPath())) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static boolean areToolRecordsEqual(List<ToolCallRecord> a, List<ToolCallRecord> b) {
+        if (a.size() != b.size()) return false;
+        for (int i = 0; i < a.size(); i++) {
+            ToolCallRecord x = a.get(i);
+            ToolCallRecord y = b.get(i);
+            if (x.getStatus() != y.getStatus()
+                    || x.getDurationMs() != y.getDurationMs()
+                    || !strEq(x.getExecutionId(), y.getExecutionId())
+                    || !strEq(x.getToolName(), y.getToolName())
+                    || !strEq(x.getArgsPreview(), y.getArgsPreview())
+                    || !strEq(x.getOutputPreview(), y.getOutputPreview())
+                    || !strEq(x.getErrorMessage(), y.getErrorMessage())) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static boolean areTimelineEqual(List<TimelineEntry> a, List<TimelineEntry> b) {
+        if (a.size() != b.size()) return false;
+        for (int i = 0; i < a.size(); i++) {
+            TimelineEntry x = a.get(i);
+            TimelineEntry y = b.get(i);
+            if (x.getType() != y.getType()
+                    || !strEq(x.getId(), y.getId())
+                    || !strEq(x.getTitle(), y.getTitle())
+                    || !strEq(x.getContent(), y.getContent())
+                    || !strEq(x.getToolExecutionId(), y.getToolExecutionId())) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static boolean areSourcesEqual(List<SourceItem> a, List<SourceItem> b) {
+        if (a.size() != b.size()) return false;
+        for (int i = 0; i < a.size(); i++) {
+            SourceItem x = a.get(i);
+            SourceItem y = b.get(i);
+            if (x.getType() != y.getType()
+                    || !strEq(x.getTitle(), y.getTitle())
+                    || !strEq(x.getUrlOrPath(), y.getUrlOrPath())) {
+                return false;
+            }
+        }
+        return true;
     }
 }

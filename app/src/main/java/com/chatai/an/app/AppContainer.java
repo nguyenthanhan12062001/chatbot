@@ -10,6 +10,7 @@ import com.chatai.an.ai.integration.IntegrationDiagnosticsManager;
 import com.chatai.an.ai.integration.download.DownloadToolManager;
 import com.chatai.an.ai.integration.files.WorkspaceFileManager;
 import com.chatai.an.ai.integration.net.InternetAccessManager;
+import com.chatai.an.ai.integration.adb.ChatAiServerManager;
 import com.chatai.an.ai.integration.adb.EmbeddedAdbManager;
 import com.chatai.an.ai.integration.shizuku.ShizukuIntegrationManager;
 import com.chatai.an.ai.integration.terminal.AppTerminalManager;
@@ -94,6 +95,7 @@ public class AppContainer {
     private final AppTerminalManager appTerminalManager;
     private final TermuxIntegrationManager termuxIntegrationManager;
     private final ShizukuIntegrationManager shizukuIntegrationManager;
+    private final ChatAiServerManager chatAiServerManager;
     private final EmbeddedAdbManager embeddedAdbManager;
     private final DownloadToolManager downloadToolManager;
     private final IntegrationDiagnosticsManager integrationDiagnosticsManager;
@@ -143,7 +145,9 @@ public class AppContainer {
         this.internetAccessManager = new InternetAccessManager(appContext, okHttpClient);
         this.appTerminalManager = new AppTerminalManager(appContext, workspaceFileManager);
         this.termuxIntegrationManager = new TermuxIntegrationManager(appContext);
+        this.chatAiServerManager = new ChatAiServerManager(appContext);
         this.shizukuIntegrationManager = new ShizukuIntegrationManager(appContext);
+        this.shizukuIntegrationManager.setChatAiServerManager(this.chatAiServerManager);
         this.embeddedAdbManager = new EmbeddedAdbManager(appContext);
         this.workspaceFileManager.setShizukuManager(this.shizukuIntegrationManager);
         this.downloadToolManager = new DownloadToolManager(appContext, okHttpClient, workspaceFileManager, settingsRepository);
@@ -321,6 +325,10 @@ public class AppContainer {
 
     public ShizukuIntegrationManager getShizukuIntegrationManager() {
         return shizukuIntegrationManager;
+    }
+
+    public ChatAiServerManager getChatAiServerManager() {
+        return chatAiServerManager;
     }
 
     public EmbeddedAdbManager getEmbeddedAdbManager() {
