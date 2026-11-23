@@ -48,6 +48,17 @@ A modular Android chat app that connects to multiple AI providers (Google Gemini
 
 ---
 
+## 🚧 Tình trạng phát triển (Unfinished features)
+
+Dưới đây là các tính năng chưa hoàn thiện trong phiên bản hiện tại:
+
+- **Pair Wireless (Wireless ADB pairing)**: Chưa hoạt động ổn định
+- **Đa ngôn ngữ**: Còn thiếu sót, chưa đầy đủ tất cả các ngôn ngữ
+- **Tích hợp API Termux**: Chưa hoạt động
+- Còn rất nhiều tính năng khác đang trong quá trình phát triển
+
+---
+
 ## 🛠 Tech Stack
 
 | Layer | Technology |
