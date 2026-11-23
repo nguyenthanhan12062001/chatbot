@@ -17,13 +17,13 @@ android {
   }
 
   // Signing configs. Keystore release duoc luu trong thu muc du an (release-key.jks).
-  // Mat khau ca keystore va key: Minhthu2103@
+  // Mat khau doc tu bien moi truong STORE_PASSWORD va KEY_PASSWORD.
   signingConfigs {
     create("release") {
       storeFile = file("${rootDir}/release-key.jks")
-      storePassword = "Minhthu2103@"
+      storePassword = System.getenv("STORE_PASSWORD") ?: ""
       keyAlias = "release"
-      keyPassword = "Minhthu2103@"
+      keyPassword = System.getenv("KEY_PASSWORD") ?: ""
     }
   }
 
