@@ -14,20 +14,18 @@ A modular Android chat app that connects to multiple AI providers (Google Gemini
     <td><b>Theme Studio</b></td>
   </tr>
   <tr>
-    <td><img src="Screenshot/chat_main.png" width="300"/></td>
-    <td><img src="Screenshot/theme_studio.png" width="300"/></td>
+    <td><img src="Screenshot/Screenshot_20261123-204733.png" width="300"/></td>
+    <td><img src="Screenshot/Screenshot_20261123-204754.png" width="300"/></td>
   </tr>
   <tr>
     <td><b>Wireless ADB</b></td>
     <td><b>Settings</b></td>
   </tr>
   <tr>
-    <td><img src="Screenshot/wireless_adb.png" width="300"/></td>
-    <td><img src="Screenshot/settings.png" width="300"/></td>
+    <td><img src="Screenshot/Screenshot_20261123-204801.png" width="300"/></td>
+    <td><img src="Screenshot/Screenshot_20261123-204810.png" width="300"/></td>
   </tr>
 </table>
-
-> 📂 Drop your screenshot PNG files into the `Screenshot/` folder and name them as above.
 
 ---
 
