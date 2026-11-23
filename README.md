@@ -1,8 +1,8 @@
 # ChatAI
 
-**Multi-Model AI Chat Android Application** — built with Java, XML, Material Design 3, Room, and Theme Studio.
+Ung dung chat AI nhieu mo hinh cho Android, xay dung bang Java, XML, Material Design 3, Room va Theme Studio.
 
-A modular Android chat app that connects to multiple AI providers (Google Gemini, OpenRouter, Pollinations, Kilo, and local models), with built-in Agent mode, tool execution, wireless ADB debugging, Shizuku/Termux integration, floating chat bubble, and Theme Studio.
+Ung dung chat Android modular ket noi voi nhieu nha cung cap AI (Google Gemini, OpenRouter, Pollinations, Kilo va model cu bo), co che do Agent, thuc thi tool, giam sat Wireless ADB, inte gration Shizuku/Termux, bong bao chat plao, va Theme Studio.
 
 ---
 
@@ -33,86 +33,86 @@ A modular Android chat app that connects to multiple AI providers (Google Gemini
 
 ---
 
-## ✨ Features
+## ✨ Tinh nang
 
-- **Multi-provider AI chat**: Google Gemini, OpenRouter (free), Pollinations (keyless), Kilo, and local models
-- **Agent mode**: Multi-step planning with tool execution and user confirmation
-- **Tool platform**: Filesystem, terminal, internet download, ADB/Shizuku integration
-- **Wireless ADB pairing**: Built-in ChatAI Server for remote debugging
-- **Shizuku & Termux**: Privileged shell access and background command execution
-- **Floating chat bubble**: Messenger-style overlay for quick chat
-- **Theme Studio**: Live color/gradient customization with presets
-- **AI Memory**: Long-term memory, project-scoped memory, merge & restore
-- **Multi-language**: English, Vietnamese, French, Japanese, Korean, Chinese
-- **Theme presets**: Sunset Orange, Ocean Blue, Midnight Purple, Emerald, Rose Pink, Minimal Gray
+- **Chat AI nhieu mo hinh**: Google Gemini, OpenRouter (mien phi), Pollinations (khong can key), Kilo va model cu bo
+- **Che do Agent**: Ke hoach nhieu buoc, thuc thi tool va xac nhan nguoi dung
+- **Nen tảng tool**: He thong tep, terminal, tai tai internet, inte gration ADB/Shizuku
+- **Giam sat Wireless ADB**: ChatAI Server co san de giam sat tu xa
+- **Shizuku & Termux**: Truy cap shell tien bien va thuc thi lenh nen nen
+- **Bong bao chat plao**: Bong bao ngoai lai kieu Messenger de chat nhanh
+- **Theme Studio**: Tu chinh mau sac va gradient thuc te voi cac bo mau
+- **Bo nho AI**: Bo nho dai han, bo nho theo du an, gop va khoi phuc
+- **Ngu ngon**: Tieng Anh, Tieng Viet, Tieng Phap, Tieng Nhat, Tieng Han, Tieng Trung
+- **Bo mau Theme**: Sunset Orange, Ocean Blue, Midnight Purple, Emerald, Rose Pink, Minimal Gray
 
 ---
 
-## 🚧 Tình trạng phát triển (Unfinished features)
+## 🚧 Tinh trang phat trien (Cac tinh nang chua hoan thien)
 
-Dưới đây là các tính năng chưa hoàn thiện trong phiên bản hiện tại:
+Doi day la cac tinh nang chua hoan thien trong phien ban hien tai:
 
-- **Pair Wireless (Wireless ADB pairing)**: Chưa hoạt động ổn định
-- **Đa ngôn ngữ**: Còn thiếu sót, chưa đầy đủ tất cả các ngôn ngữ
-- **Tích hợp API Termux**: Chưa hoạt động
-- Còn rất nhiều tính năng khác đang trong quá trình phát triển
+- **Pair Wireless (Wireless ADB pairing)**: Chua hoat dong on dinh
+- **Da ngu ngon**: Con thieu sot, chua day du tat ca cac ngu ngon
+- **Tich hop API Termux**: Chua hoat dong
+- Con nhieu tinh nang khac dang trong qua trinh phat trien
 
 ---
 
 ## 🛠 Tech Stack
 
-| Layer | Technology |
-|-------|------------|
-| Language | Java 11 |
-| UI | XML + Material Design 3 + ViewBinding |
-| Database | Room (SQLite) |
-| Networking | OkHttp + Gson |
-| Dependency injection | Manual DI |
-| Architecture | MVVM + Functional, one-way data flow |
-| Background | AppExecutors + coroutines-compatible patterns |
-| Accessibility | Shizuku API, Termux RUN_COMMAND |
+| Tep | Cong nghe |
+|-----|-----------|
+| Ngon ngu lap trinh | Java 11 |
+| Giao dien | XML + Material Design 3 + ViewBinding |
+| Co so du lieu | Room (SQLite) |
+| Mang | OkHttp + Gson |
+| Tuong tu nhap | Manual DI |
+| Kien truc | MVVM + Functional, luu lieu mot chieu |
+| Nen nen | AppExecutors |
+| Truy cap he thong | Shizuku API, Termux RUN_COMMAND |
 
 ---
 
-## 🚀 Getting Started
+## 🚀 Khoi dong nhanh
 
-### Prerequisites
+### Dieu kien can thiet
 
-- Android Studio (latest stable)
+- Android Studio (ban moi nhat)
 - Android SDK API 36 (compileSdk), minSdk 26
 - Java 11+
 
-### Installation
+### Cai dat
 
-1. Clone the repository:
+1. Clone kho luu tru:
 
 ```bash
 git clone https://github.com/nguyenthanhan12062001/chatbot.git
 cd chatbot
 ```
 
-2. Open the project in Android Studio.
-3. Create a `.env` file in the project root with your API keys:
+2. Mo du an trong Android Studio.
+3. Tao tep `.env` trong goc du an voi cac khoa API cua ban:
 
 ```ini
-# GOOGLE_GEMINI_API_KEY=your_gemini_key
-# OPENROUTER_API_KEY=your_openrouter_key
+# GOOGLE_GEMINI_API_KEY=ma_api_google_gemini_cua_ban
+# OPENROUTER_API_KEY=ma_api_openrouter_cua_ban
 ```
 
-4. Sync Gradle and run on an emulator or physical device.
+4. Dong bo Gradle va chay trinh mo hoc hoac thiet bao chat thuc.
 
-### Release Build
+### Xay dung Release
 
-The release APK is signed with a keystore kept locally in the project (`release-key.jks`).  
-Configure your own signing in `app/build.gradle.kts` before building release:
+APK Release duoc ky bang keystore luu o may local trong du an (`release-key.jks`).  
+Cau hinh ky cua ban trong `app/build.gradle.kts` truoc khi xay dung release:
 
 ```kotlin
 signingConfigs {
     create("release") {
         storeFile = file("${rootDir}/release-key.jks")
-        storePassword = System.getenv("STORE_PASSWORD") ?: "your_store_password"
+        storePassword = System.getenv("STORE_PASSWORD") ?: "mat_khau_keystore_cua_ban"
         keyAlias = "release"
-        keyPassword = System.getenv("KEY_PASSWORD") ?: "your_key_password"
+        keyPassword = System.getenv("KEY_PASSWORD") ?: "mat_khau_key_cua_ban"
     }
 }
 ```
@@ -123,21 +123,21 @@ signingConfigs {
 
 ---
 
-## 📂 Project Structure
+## 📂 Cau truc du an
 
 ```
 chatbot/
 ├── app/
 │   ├── src/main/java/com/chatai/an/
-│   │   ├── ai/               # AI core, providers, tools, agent, memory
-│   │   ├── core/             # App container, executors, logger
+│   │   ├── ai/               # Tim nhan AI, nha cung cap, tool, agent, bo nho
+│   │   ├── core/             # Bo kho ung dung, bo thuc thuc, nhat ky
 │   │   ├── integration/      # ADB, Shizuku, Termux, Wireless ADB
-│   │   ├── presentation/     # Activities, fragments, adapters, ViewModels
-│   │   └── theme/            # Theme Studio, palettes, presets
-│   └── res/                  # Layouts, drawables, values (6 languages)
+│   │   ├── presentation/     # Hoat dong, truong hop, bo dieu hoa
+│   │   └── theme/            # Theme Studio, bo mau, bo mau coc
+│   └── res/                  # Bo cuc, hinh anh, gia tri (6 ngu ngon)
 ├── gradle/
-├── Screenshot/               # App screenshots
-├── release-key.jks           # Release signing keystore
+├── Screenshot/               # Anh chup man hinh ung dung
+├── release-key.jks           # Keystore ky release
 ├── build.gradle.kts
 ├── settings.gradle.kts
 └── gradle.properties
@@ -145,16 +145,16 @@ chatbot/
 
 ---
 
-## 🤝 Contributing
+## � Dong dong gop
 
-Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
-
----
-
-## 📄 License
-
-This project is licensed under the MIT License.
+Pull requests duoc chao nghin. Cho cac thay doi lon, vui long mo issue truoc de thao luan thay doi ban muon.
 
 ---
 
-**Maintained by Nguyen Thanh An**
+## 📄 Giay phep
+
+Du an duoc cap phep theo Giay phep MIT.
+
+---
+
+**Duoc duong tri boi Nguyen Thanh An**
