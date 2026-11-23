@@ -10,20 +10,24 @@ A modular Android chat app that connects to multiple AI providers (Google Gemini
 
 <table>
   <tr>
-    <td><b>Main Chat</b></td>
-    <td><b>Theme Studio</b></td>
-  </tr>
-  <tr>
+    <td><img src="Screenshot/Screenshot_20261123-204708.png" width="300"/></td>
     <td><img src="Screenshot/Screenshot_20261123-204733.png" width="300"/></td>
+    <td><img src="Screenshot/Screenshot_20261123-204745.png" width="300"/></td>
+  </tr>
+  <tr>
     <td><img src="Screenshot/Screenshot_20261123-204754.png" width="300"/></td>
-  </tr>
-  <tr>
-    <td><b>Wireless ADB</b></td>
-    <td><b>Settings</b></td>
-  </tr>
-  <tr>
     <td><img src="Screenshot/Screenshot_20261123-204801.png" width="300"/></td>
     <td><img src="Screenshot/Screenshot_20261123-204810.png" width="300"/></td>
+  </tr>
+  <tr>
+    <td><img src="Screenshot/Screenshot_20261123-204815.png" width="300"/></td>
+    <td><img src="Screenshot/Screenshot_20261123-204822.png" width="300"/></td>
+    <td><img src="Screenshot/Screenshot_20261123-204840.png" width="300"/></td>
+  </tr>
+  <tr>
+    <td><img src="Screenshot/Screenshot_20261123-204850.png" width="300"/></td>
+    <td><img src="Screenshot/Screenshot_20261123-204858.png" width="300"/></td>
+    <td></td>
   </tr>
 </table>
 
