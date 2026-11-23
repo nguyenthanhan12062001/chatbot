@@ -2,6 +2,7 @@ package com.chatai.an.ai.provider;
 
 import android.content.Context;
 
+import com.chatai.an.ai.context.CompatHistory;
 import com.chatai.an.ai.core.ExecutionHandle;
 import com.chatai.an.data.repository.UnifiedModelRepository;
 import com.chatai.an.domain.model.AccessType;
@@ -158,9 +159,12 @@ public class OpenAiProtocolAdapter implements AiProvider {
         try (Response response = call.execute()) {
             if (!response.isSuccessful()) {
                 String errBody = response.body() != null ? response.body().string() : "";
+                String lowerErr = errBody.toLowerCase(java.util.Locale.ROOT);
                 if (allowRetryWithoutTools
                         && (response.code() == 400 || response.code() == 422)
-                        && errBody.toLowerCase().contains("tool")) {
+                        && (lowerErr.contains("tool") || lowerErr.contains("function")
+                        || lowerErr.contains("schema") || lowerErr.contains("unsupported")
+                        || lowerErr.contains("invalid"))) {
                     JsonObject fallbackPayload = buildRequestPayload(originalRequest, wireModel, stream, false);
                     executePayload(fallbackPayload, wireModel, stream, apiKey, handle, listener, false, originalRequest);
                     return;
@@ -202,7 +206,10 @@ public class OpenAiProtocolAdapter implements AiProvider {
         boolean imageSupported = request.getModel().isImageSupported();
         boolean fileSupported = request.getModel().isFileSupported();
 
-        for (Message msg : request.getContextMessages()) {
+        List<Message> normalizedMessages = CompatHistory.normalizeForProvider(
+                request.getContextMessages(), getProtocolType()
+        );
+        for (Message msg : normalizedMessages) {
             JsonObject mObj = new JsonObject();
             String roleStr = msg.getRole() == MessageRole.ASSISTANT ? "assistant" : "user";
             mObj.addProperty("role", roleStr);

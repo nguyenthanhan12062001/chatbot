@@ -16,7 +16,10 @@ import com.chatai.an.domain.model.AccessType;
 import com.chatai.an.domain.model.Attachment;
 import com.chatai.an.domain.model.Message;
 import com.chatai.an.domain.model.MessageRole;
+import com.chatai.an.domain.model.SourceItem;
+import com.chatai.an.domain.model.TimelineEntry;
 import com.chatai.an.domain.model.TokenUsage;
+import com.chatai.an.domain.model.ToolCallRecord;
 import com.chatai.an.domain.repository.MessageRepository;
 
 import java.util.ArrayList;
@@ -117,7 +120,9 @@ public class LocalMessageRepository implements MessageRepository {
                         0,
                         false,
                         now,
-                        now
+                        now,
+                        "[]",
+                        "[]"
                 );
                 messageDao.insert(messageEntity);
 
@@ -159,7 +164,73 @@ public class LocalMessageRepository implements MessageRepository {
             boolean isError,
             OnMessageSavedListener listener
     ) {
+        saveAssistantMessage(
+                conversationId,
+                content,
+                thinkingContent,
+                modelId,
+                providerId,
+                accessType,
+                tokenUsage,
+                isError,
+                Collections.emptyList(),
+                Collections.emptyList(),
+                listener
+        );
+    }
+
+    @Override
+    public void saveAssistantMessage(
+            String conversationId,
+            String content,
+            String thinkingContent,
+            String modelId,
+            String providerId,
+            AccessType accessType,
+            TokenUsage tokenUsage,
+            boolean isError,
+            List<ToolCallRecord> toolRecords,
+            List<String> followUpSuggestions,
+            OnMessageSavedListener listener
+    ) {
+        saveAssistantMessage(
+                conversationId,
+                content,
+                thinkingContent,
+                modelId,
+                providerId,
+                accessType,
+                tokenUsage,
+                isError,
+                toolRecords,
+                followUpSuggestions,
+                Collections.emptyList(),
+                Collections.emptyList(),
+                listener
+        );
+    }
+
+    @Override
+    public void saveAssistantMessage(
+            String conversationId,
+            String content,
+            String thinkingContent,
+            String modelId,
+            String providerId,
+            AccessType accessType,
+            TokenUsage tokenUsage,
+            boolean isError,
+            List<ToolCallRecord> toolRecords,
+            List<String> followUpSuggestions,
+            List<TimelineEntry> timelineEntries,
+            List<SourceItem> sources,
+            OnMessageSavedListener listener
+    ) {
         if (conversationId == null || conversationId.isEmpty()) return;
+        List<ToolCallRecord> safeTools = toolRecords == null ? Collections.emptyList() : new ArrayList<>(toolRecords);
+        List<String> safeFollowUps = followUpSuggestions == null ? Collections.emptyList() : new ArrayList<>(followUpSuggestions);
+        List<TimelineEntry> safeTimeline = timelineEntries == null ? Collections.emptyList() : new ArrayList<>(timelineEntries);
+        List<SourceItem> safeSources = sources == null ? Collections.emptyList() : new ArrayList<>(sources);
         executors.diskIO().execute(() -> {
             long now = System.currentTimeMillis();
             String safeContent = content == null ? "" : content;
@@ -169,6 +240,10 @@ public class LocalMessageRepository implements MessageRepository {
             int total = tokenUsage != null ? tokenUsage.getTotalTokens() : 0;
             String accessStr = accessType != null ? accessType.name() : "";
             String messageId = UUID.randomUUID().toString();
+            String toolsJson = EntityMapper.toToolRecordsJson(safeTools);
+            String followUpsJson = EntityMapper.toStringListJson(safeFollowUps);
+            String timelineJson = EntityMapper.toTimelineJson(safeTimeline);
+            String sourcesJson = EntityMapper.toSourcesJson(safeSources);
 
             database.runInTransaction(() -> {
                 MessageEntity entity = new MessageEntity(
@@ -186,7 +261,11 @@ public class LocalMessageRepository implements MessageRepository {
                         total,
                         isError,
                         now,
-                        now
+                        now,
+                        toolsJson,
+                        followUpsJson,
+                        timelineJson,
+                        sourcesJson
                 );
                 messageDao.insert(entity);
                 conversationDao.updatePreview(conversationId, buildPreview(safeContent, Collections.emptyList()), now);
@@ -206,7 +285,11 @@ public class LocalMessageRepository implements MessageRepository {
                     isError,
                     now,
                     now,
-                    Collections.emptyList()
+                    Collections.emptyList(),
+                    safeTools,
+                    safeFollowUps,
+                    safeTimeline,
+                    safeSources
             );
             if (listener != null) {
                 executors.postToMain(() -> listener.onSaved(saved));
@@ -241,6 +324,25 @@ public class LocalMessageRepository implements MessageRepository {
                 conversationDao.updatePreview(conversationId, preview, System.currentTimeMillis());
             }
         }));
+    }
+
+    @Override
+    public void deleteMessagesFromTimestamp(String conversationId, long fromCreatedAt, Runnable onComplete) {
+        if (conversationId == null || conversationId.isEmpty()) {
+            if (onComplete != null) executors.postToMain(onComplete);
+            return;
+        }
+        executors.diskIO().execute(() -> {
+            database.runInTransaction(() -> {
+                messageDao.deleteFromTimestampSync(conversationId, fromCreatedAt);
+                MessageEntity latest = messageDao.getLatestByConversationSync(conversationId);
+                String preview = latest != null ? buildPreview(latest.content, Collections.emptyList()) : "";
+                conversationDao.updatePreview(conversationId, preview, System.currentTimeMillis());
+            });
+            if (onComplete != null) {
+                executors.postToMain(onComplete);
+            }
+        });
     }
 
     private String buildTitleFromInput(String content, List<Attachment> attachments) {

@@ -1,0 +1,229 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/tool_card_root"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="6dp"
+    android:orientation="vertical"
+    android:paddingHorizontal="12dp"
+    android:paddingVertical="9dp">
+
+    <LinearLayout
+        android:id="@+id/ll_tool_card_header"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="?attr/selectableItemBackground"
+        android:clickable="true"
+        android:focusable="true"
+        android:gravity="center_vertical"
+        android:minHeight="36dp"
+        android:orientation="horizontal">
+
+        <ImageView
+            android:id="@+id/iv_tool_icon"
+            android:layout_width="16dp"
+            android:layout_height="16dp"
+            android:contentDescription="@null"
+            android:src="@drawable/ic_build" />
+
+        <TextView
+            android:id="@+id/tv_tool_name"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="7dp"
+            android:layout_weight="1"
+            android:ellipsize="end"
+            android:fontFamily="monospace"
+            android:maxLines="1"
+            android:textSize="12.5sp"
+            android:textStyle="bold"
+            tools:text="adb_shell" />
+
+        <TextView
+            android:id="@+id/tv_tool_privilege_badge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="6dp"
+            android:paddingHorizontal="6dp"
+            android:paddingVertical="2dp"
+            android:textSize="9.5sp"
+            android:textStyle="bold"
+            android:visibility="gone"
+            tools:text="SHIZUKU"
+            tools:visibility="visible" />
+
+        <TextView
+            android:id="@+id/tv_tool_status"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="6dp"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            tools:text="Waiting approval" />
+
+        <TextView
+            android:id="@+id/tv_tool_duration"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="5dp"
+            android:textSize="10.5sp"
+            android:visibility="gone"
+            tools:text="42ms"
+            tools:visibility="visible" />
+
+        <ImageView
+            android:id="@+id/iv_tool_expand"
+            android:layout_width="16dp"
+            android:layout_height="16dp"
+            android:layout_marginStart="4dp"
+            android:contentDescription="@string/tool_toggle_details"
+            android:src="@drawable/ic_chevron_down" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/tv_tool_reason"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="3dp"
+        android:textSize="11.5sp"
+        android:visibility="gone"
+        tools:text="Execute privileged shell command via Shizuku UserService"
+        tools:visibility="visible" />
+
+    <LinearLayout
+        android:id="@+id/ll_tool_details"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:orientation="vertical"
+        android:visibility="gone"
+        tools:visibility="visible">
+
+        <TextView
+            android:id="@+id/tv_tool_input_label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="3dp"
+            android:text="@string/tool_input_label"
+            android:textSize="10sp"
+            android:textStyle="bold"
+            android:visibility="gone"
+            tools:visibility="visible" />
+
+        <TextView
+            android:id="@+id/tv_tool_args"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="monospace"
+            android:padding="8dp"
+            android:textIsSelectable="true"
+            android:textSize="11sp"
+            android:visibility="gone"
+            tools:text="command: pm list packages -3"
+            tools:visibility="visible" />
+
+        <TextView
+            android:id="@+id/tv_tool_output_label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:layout_marginBottom="3dp"
+            android:text="@string/tool_output_label"
+            android:textSize="10sp"
+            android:textStyle="bold"
+            android:visibility="gone"
+            tools:visibility="visible" />
+
+        <TextView
+            android:id="@+id/tv_tool_output"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="monospace"
+            android:padding="8dp"
+            android:textIsSelectable="true"
+            android:textSize="11sp"
+            android:visibility="gone"
+            tools:text="package:com.chatai.an"
+            tools:visibility="visible" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:gravity="end"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/btn_tool_copy_output"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:clickable="true"
+                android:focusable="true"
+                android:minHeight="32dp"
+                android:gravity="center_vertical"
+                android:paddingHorizontal="8dp"
+                android:text="@string/tool_copy_output"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:visibility="gone"
+                tools:visibility="visible" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/ll_tool_confirmation_bar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:gravity="end|center_vertical"
+        android:orientation="horizontal"
+        android:visibility="gone"
+        tools:visibility="visible">
+
+        <TextView
+            android:id="@+id/btn_tool_deny"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center"
+            android:minHeight="40dp"
+            android:paddingHorizontal="11dp"
+            android:paddingVertical="6dp"
+            android:text="@string/tool_action_deny"
+            android:textSize="11.5sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/btn_tool_allow_session"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="6dp"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center"
+            android:minHeight="40dp"
+            android:paddingHorizontal="11dp"
+            android:paddingVertical="6dp"
+            android:text="@string/tool_action_allow_session"
+            android:textSize="11.5sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/btn_tool_allow_once"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="6dp"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center"
+            android:minHeight="40dp"
+            android:paddingHorizontal="12dp"
+            android:paddingVertical="6dp"
+            android:text="@string/tool_action_allow_once"
+            android:textSize="11.5sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+</LinearLayout>

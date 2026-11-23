@@ -51,15 +51,31 @@ public class ToolRegistry {
             if (settings != null && !settings.isToolEnabled(def.getName())) {
                 continue;
             }
-            if (mode == AgentMode.CHAT) {
-                // Chat mode gives full conversational, memory, internet, download, utility & read/write file access
-                defs.add(def);
-            } else {
-                // Coding mode includes all registered enabled tools
-                defs.add(def);
+            if (mode == AgentMode.CHAT && !isAllowedInChatMode(def)) {
+                continue;
             }
+            defs.add(def);
         }
         return Collections.unmodifiableList(defs);
+    }
+
+    private static boolean isAllowedInChatMode(ToolDefinition def) {
+        String name = def.getName();
+        if (def.getCategory() == ToolCategory.TERMINAL || def.getCategory() == ToolCategory.TERMUX) {
+            return false;
+        }
+        if ("fs_write_file".equals(name) || "fs_edit_file".equals(name) || "fs_delete".equals(name)) {
+            return false;
+        }
+        if ("adb_shell".equals(name)
+                || "adb_package_manager".equals(name)
+                || "adb_activity_manager".equals(name)
+                || "adb_permission_manager".equals(name)
+                || "adb_process_manager".equals(name)
+                || "adb_system_settings".equals(name)) {
+            return false;
+        }
+        return true;
     }
 
     public ToolResult executeTool(String name, JsonObject args) {

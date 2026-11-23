@@ -105,6 +105,119 @@
             android:layout_width="match_parent"
             android:layout_height="1dp" />
 
+        <!-- Synced Mode, Shizuku & Thinking Quick Strip -->
+        <HorizontalScrollView
+            android:id="@+id/bubble_quick_strip_scroll"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:clipToPadding="false"
+            android:paddingHorizontal="10dp"
+            android:paddingVertical="5dp"
+            android:scrollbars="none">
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <LinearLayout
+                    android:id="@+id/bubble_mode_toggle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:padding="2dp">
+
+                    <TextView
+                        android:id="@+id/btn_bubble_mode_chat"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:gravity="center"
+                        android:minHeight="28dp"
+                        android:paddingHorizontal="10dp"
+                        android:paddingVertical="3dp"
+                        android:text="@string/mode_chat_pill"
+                        android:textSize="11sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/btn_bubble_mode_code"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:gravity="center"
+                        android:minHeight="28dp"
+                        android:paddingHorizontal="10dp"
+                        android:paddingVertical="3dp"
+                        android:text="@string/mode_code_pill"
+                        android:textSize="11sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/btn_bubble_shizuku"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="6dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:minHeight="30dp"
+                    android:orientation="horizontal"
+                    android:paddingHorizontal="9dp"
+                    android:paddingVertical="4dp">
+
+                    <View
+                        android:id="@+id/view_bubble_shizuku_dot"
+                        android:layout_width="6dp"
+                        android:layout_height="6dp"
+                        android:layout_marginEnd="5dp" />
+
+                    <TextView
+                        android:id="@+id/tv_bubble_shizuku"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/shizuku_badge_off"
+                        android:textSize="10.5sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/btn_bubble_thinking"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="6dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:minHeight="30dp"
+                    android:orientation="horizontal"
+                    android:paddingHorizontal="9dp"
+                    android:paddingVertical="4dp">
+
+                    <ImageView
+                        android:id="@+id/iv_bubble_thinking"
+                        android:layout_width="13dp"
+                        android:layout_height="13dp"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_psychology" />
+
+                    <TextView
+                        android:id="@+id/tv_bubble_thinking"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="4dp"
+                        android:text="@string/deep_thinking_label"
+                        android:textSize="10.5sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+            </LinearLayout>
+        </HorizontalScrollView>
+
         <!-- Message Stream -->
         <FrameLayout
             android:layout_width="match_parent"
@@ -180,6 +293,46 @@
                 android:textStyle="bold"
                 tools:text="Đang trả lời..." />
         </LinearLayout>
+
+        <!-- Queued Follow-Ups Strip -->
+        <LinearLayout
+            android:id="@+id/ll_bubble_queue_container"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="10dp"
+            android:layout_marginBottom="4dp"
+            android:orientation="vertical"
+            android:paddingHorizontal="8dp"
+            android:paddingVertical="4dp"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/tv_bubble_queue_header"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="10.5sp"
+                android:textStyle="bold"
+                tools:text="Queued follow-ups (1)" />
+
+            <LinearLayout
+                android:id="@+id/ll_bubble_queue_items"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="3dp"
+                android:orientation="vertical" />
+        </LinearLayout>
+
+        <!-- Slash Command Autocomplete Popup -->
+        <LinearLayout
+            android:id="@+id/ll_bubble_slash_popup"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="10dp"
+            android:layout_marginBottom="4dp"
+            android:orientation="vertical"
+            android:paddingHorizontal="8dp"
+            android:paddingVertical="4dp"
+            android:visibility="gone" />
 
         <View
             android:id="@+id/bubble_composer_divider"

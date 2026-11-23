@@ -368,9 +368,11 @@
     <string name="terminal_title">Terminal</string>
     <string name="terminal_backend_app">App Terminal</string>
     <string name="terminal_backend_termux">Termux</string>
+    <string name="terminal_backend_shizuku">Shizuku</string>
     <string name="terminal_backend_choose_title">Terminal Execution Backend</string>
     <string name="terminal_backend_app_desc">Built-in App Terminal (/system/bin/sh inside workspace)</string>
     <string name="terminal_backend_termux_desc">Termux external environment (com.termux.RUN_COMMAND)</string>
+    <string name="terminal_backend_shizuku_desc">Privileged ADB / Root shell via Shizuku UserService</string>
     <string name="terminal_input_hint">Enter shell command…</string>
     <string name="terminal_stdin_hint">Send input to running process…</string>
     <string name="terminal_cd_copy">Copy terminal output</string>
@@ -383,6 +385,8 @@
     <string name="terminal_status_running">Running… Tap STOP or CTRL+C to interrupt</string>
     <string name="terminal_status_termux_ready">Termux active • Commands route via RUN_COMMAND API</string>
     <string name="terminal_status_termux_setup">Termux needs setup (%1$s)</string>
+    <string name="terminal_status_shizuku_ready">Shizuku active (%1$s) • Commands run with elevated privileges</string>
+    <string name="terminal_status_shizuku_setup">Shizuku needs setup (%1$s)</string>
     <string name="terminal_open_hub">Open Hub</string>
     <string name="settings_terminal_open_title">In-App Terminal Console</string>
     <string name="settings_terminal_open_desc">Run shell commands, view ANSI output &amp; use extra dev keys</string>
@@ -390,5 +394,86 @@
     <string name="hub_terminal_title">In-App Terminal &amp; Backend Mode</string>
     <string name="hub_terminal_open">Open Terminal</string>
     <string name="hub_terminal_choose_label">Default Terminal Engine:</string>
+    <string name="hub_shizuku_open">Open Shizuku</string>
+    <string name="shizuku_rationale_title">Allow Shizuku Access</string>
+    <string name="shizuku_rationale_message">ChatAI uses Shizuku\'s Binder UserService to run ADB/Root shell commands and inspect device diagnostics. Approve the permission prompt or open Shizuku to grant access.</string>
+    <string name="shizuku_open_manager">Open Shizuku</string>
+
+    <!-- AndroidHarness Chat & Synced Bubble -->
+    <string name="mode_chat_pill">Chat</string>
+    <string name="mode_code_pill">Code</string>
+    <string name="workspace_chip_default">Workspace</string>
+    <string name="shizuku_badge_off">Shizuku · Off</string>
+    <string name="shizuku_badge_stopped">Shizuku · Stopped</string>
+    <string name="shizuku_badge_grant">Shizuku · Grant</string>
+    <string name="shizuku_badge_ready">Shizuku · Ready</string>
+    <string name="shizuku_badge_adb">Shizuku · ADB</string>
+    <string name="shizuku_badge_root">Shizuku · Root</string>
+    <string name="shizuku_badge_error">Shizuku · Error</string>
+    <string name="context_meter_label">Ctx %1$d%%</string>
+    <string name="context_inspector_title">Context Window Inspector</string>
+    <string name="context_inspector_summary">Model: %1$s\nWindow Budget: %2$,d tokens (%3$d%% used)\n\n• System &amp; Tools Prompt: ~%4$,d tokens\n• Retrieved AI Memories: ~%5$,d tokens\n• Compacted Summary: ~%6$,d tokens\n• Active Messages (%7$d): ~%8$,d tokens\n\nEstimated Input Total: ~%9$,d tokens</string>
+    <string name="context_compact_now">Compact History</string>
+    <string name="context_compacted_done">Conversation compacted into summary</string>
+    <string name="context_compact_nothing">Not enough messages to compact yet</string>
+    <string name="tool_status_waiting">Waiting approval</string>
+    <string name="tool_status_running">Running…</string>
+    <string name="tool_status_completed">Completed</string>
+    <string name="tool_status_failed">Failed</string>
+    <string name="tool_status_denied">Denied</string>
+    <string name="tool_status_cancelled">Cancelled</string>
+    <string name="tool_action_allow_once">Allow Once</string>
+    <string name="tool_action_allow_session">Always (Session)</string>
+    <string name="tool_action_deny">Deny</string>
+    <string name="tool_copy_output">Copy output</string>
+    <string name="tool_toggle_details">Details</string>
+    <string name="queue_header_title">Queued follow-ups (%1$d)</string>
+    <string name="queue_send_now">Send now</string>
+    <string name="queue_added_notice">Queued follow-up (%1$d)</string>
+    <string name="composer_queue_hint">Queue a follow-up message…</string>
+    <string name="cd_queue_send">Queue follow-up message</string>
+    <string name="follow_up_header">Suggested next steps</string>
+    <string name="action_regenerate">Regenerate</string>
+    <string name="action_continue_in_code">Continue in Code</string>
+    <string name="cd_scroll_to_bottom">Scroll to bottom</string>
+    <string name="slash_cmd_code_desc">Switch to autonomous Coding Agent mode</string>
+    <string name="slash_cmd_chat_desc">Switch to conversational Chat mode</string>
+    <string name="slash_cmd_context_desc">Inspect context window &amp; compact history</string>
+    <string name="slash_cmd_shizuku_desc">Check or grant Shizuku permission</string>
+    <string name="slash_cmd_review_desc">Review workspace files &amp; recent changes</string>
+    <string name="slash_cmd_new_desc">Start a fresh conversation</string>
+    <string name="slash_cmd_clear_desc">Clear follow-up queue</string>
+
+    <!-- AI Timeline, Sources, LaTeX & Rich Media -->
+    <string name="timeline_thinking_title">AI Thinking</string>
+    <string name="timeline_commentary_title">AI Commentary</string>
+    <string name="timeline_tool_call_title">Tool Call</string>
+    <string name="timeline_sources_title">Sources</string>
+    <string name="timeline_sources_count">Sources (%1$d)</string>
+    <string name="timeline_show_details">Show details</string>
+    <string name="timeline_hide_details">Hide details</string>
+    <string name="timeline_show_sources">Show list</string>
+    <string name="timeline_hide_sources">Hide list</string>
+    <string name="tool_input_label">Input</string>
+    <string name="tool_output_label">Output</string>
+    <string name="latex_block_label">LaTeX</string>
+    <string name="action_copy_latex">Copy TeX</string>
+    <string name="cd_generated_image">Message image</string>
+    <string name="image_preview_title">Image Preview</string>
+    <string name="image_load_error">Unable to load image</string>
+    <string name="hub_embedded_adb_title">Embedded Wireless ADB (Standalone Pairing)</string>
+    <string name="hub_embedded_adb_desc">Pair with Android Wireless Debugging via 6-digit PIN code without Shizuku.</string>
+    <string name="hub_embedded_adb_pair">Pair Wireless ADB</string>
+    <string name="dialog_adb_pair_title">Pair Wireless Debugging</string>
+    <string name="dialog_adb_pair_message">Enter IP address, port, and 6-digit pairing code from Android Wireless Debugging settings.</string>
+    <string name="adb_pair_ip_hint">IP Address (e.g. 127.0.0.1)</string>
+    <string name="adb_pair_port_hint">Pairing Port</string>
+    <string name="adb_pair_code_hint">6-Digit Pairing Code</string>
+    <string name="hub_background_title">Background Execution &amp; Battery Exemption</string>
+    <string name="hub_background_desc">Prevent Android from killing background agent tasks, terminal streams, and Embedded ADB sessions.</string>
+    <string name="hub_background_request">Request Background Exemption</string>
+    <string name="dialog_background_title">Background Execution Permission</string>
+    <string name="dialog_background_message">To keep ChatAI running tasks, terminal sessions, and ADB connections reliably in the background, please allow unrestricted background execution or exempt ChatAI from battery optimizations.</string>
 </resources>
+
 

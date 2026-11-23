@@ -34,4 +34,7 @@ public interface MessageDao {
 
     @Query("DELETE FROM messages WHERE id = :messageId")
     void deleteById(String messageId);
+
+    @Query("DELETE FROM messages WHERE conversation_id = :conversationId AND created_at >= :fromCreatedAt")
+    void deleteFromTimestampSync(String conversationId, long fromCreatedAt);
 }

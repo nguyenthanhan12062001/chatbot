@@ -21,17 +21,25 @@ import com.chatai.an.domain.model.MessageRole;
 import com.chatai.an.domain.model.ModelCapability;
 import com.chatai.an.domain.model.ModelProvider;
 import com.chatai.an.domain.model.ProviderConfig;
+import com.chatai.an.domain.model.SourceItem;
+import com.chatai.an.domain.model.TimelineEntry;
+import com.chatai.an.domain.model.ToolCallRecord;
 import com.chatai.an.domain.model.ToolCallRequest;
 import com.chatai.an.domain.model.ToolResult;
 import com.chatai.an.domain.repository.ModelRepository;
 import com.chatai.an.domain.repository.ProviderRepository;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -109,6 +117,18 @@ public class AiCore {
             AiStreamListener listener,
             ExecutionNoticeListener noticeListener
     ) {
+        return executeAsync(request, activeProjectId, maxToolSteps, confirmationHandler, null, listener, noticeListener);
+    }
+
+    public ExecutionHandle executeAsync(
+            AiRequest request,
+            String activeProjectId,
+            int maxToolSteps,
+            ToolExecutor.ConfirmationHandler confirmationHandler,
+            ToolExecutor.ToolLifecycleListener toolLifecycleListener,
+            AiStreamListener listener,
+            ExecutionNoticeListener noticeListener
+    ) {
         ExecutionHandle handle = new ExecutionHandle();
         int boundedSteps = Math.max(1, Math.min(10, maxToolSteps));
         executors.worker().execute(() -> executeWithTools(
@@ -116,6 +136,7 @@ public class AiCore {
                 activeProjectId,
                 boundedSteps,
                 confirmationHandler,
+                toolLifecycleListener,
                 handle,
                 listener,
                 noticeListener
@@ -133,7 +154,19 @@ public class AiCore {
             AiStreamListener outerListener,
             ExecutionNoticeListener noticeListener
     ) {
-        executeWithTools(request, activeProjectId, 4, null, handle, outerListener, noticeListener);
+        executeWithTools(request, activeProjectId, 4, null, null, handle, outerListener, noticeListener);
+    }
+
+    public void executeWithTools(
+            AiRequest request,
+            String activeProjectId,
+            int maxToolSteps,
+            ToolExecutor.ConfirmationHandler confirmationHandler,
+            ExecutionHandle handle,
+            AiStreamListener outerListener,
+            ExecutionNoticeListener noticeListener
+    ) {
+        executeWithTools(request, activeProjectId, maxToolSteps, confirmationHandler, null, handle, outerListener, noticeListener);
     }
 
     /**
@@ -145,6 +178,7 @@ public class AiCore {
             String activeProjectId,
             int maxToolSteps,
             ToolExecutor.ConfirmationHandler confirmationHandler,
+            ToolExecutor.ToolLifecycleListener toolLifecycleListener,
             ExecutionHandle handle,
             AiStreamListener outerListener,
             ExecutionNoticeListener noticeListener
@@ -157,6 +191,30 @@ public class AiCore {
         AiRequest currentRequest = request;
         StringBuilder accumulatedThinking = new StringBuilder();
         StringBuilder accumulatedOutputPrefix = new StringBuilder();
+        final Map<String, ToolCallRecord> toolRecordMap = Collections.synchronizedMap(new LinkedHashMap<>());
+        final List<TimelineEntry> timelineEntries = Collections.synchronizedList(new ArrayList<>());
+        final Set<String> timelineToolIds = Collections.synchronizedSet(new LinkedHashSet<>());
+        final Map<String, SourceItem> sourceMap = Collections.synchronizedMap(new LinkedHashMap<>());
+
+        ToolExecutor.ToolLifecycleListener aggregatedLifecycle = record -> {
+            if (record != null) {
+                toolRecordMap.put(record.getExecutionId(), record);
+                if (timelineToolIds.add(record.getExecutionId())) {
+                    timelineEntries.add(new TimelineEntry(
+                            "tool-" + record.getExecutionId(),
+                            TimelineEntry.Type.TOOL_CALL,
+                            record.getToolName(),
+                            record.getReason(),
+                            record.getExecutionId(),
+                            record.getStartedAt() > 0 ? record.getStartedAt() : System.currentTimeMillis()
+                    ));
+                }
+                outerListener.onTimelineUpdated(snapshotTimeline(timelineEntries), snapshotSources(sourceMap));
+            }
+            if (toolLifecycleListener != null) {
+                toolLifecycleListener.onToolUpdated(record);
+            }
+        };
 
         for (int step = 1; step <= maxToolSteps; step++) {
             if (handle != null && handle.isCancelled()) {
@@ -165,10 +223,13 @@ public class AiCore {
                 return;
             }
 
+            final int currentStep = step;
             final AtomicReference<AiResponse> stepResponse = new AtomicReference<>();
             final AtomicReference<AiError> stepError = new AtomicReference<>();
             final AtomicBoolean forwardedToUser = new AtomicBoolean(false);
             final StringBuilder suppressedBuffer = new StringBuilder();
+            final StringBuilder stepThinking = new StringBuilder();
+            final String stepThinkingId = "think-step-" + currentStep;
 
             AiStreamListener interceptListener = new AiStreamListener() {
                 @Override
@@ -182,6 +243,19 @@ public class AiCore {
                 public void onThinkingDelta(String delta) {
                     if (delta != null) {
                         accumulatedThinking.append(delta);
+                        stepThinking.append(delta);
+                        upsertTimelineEntry(
+                                timelineEntries,
+                                new TimelineEntry(
+                                        stepThinkingId,
+                                        TimelineEntry.Type.THINKING,
+                                        "AI Thinking",
+                                        stepThinking.toString(),
+                                        "",
+                                        System.currentTimeMillis()
+                                )
+                        );
+                        outerListener.onTimelineUpdated(snapshotTimeline(timelineEntries), snapshotSources(sourceMap));
                     }
                     outerListener.onThinkingDelta(delta);
                 }
@@ -193,17 +267,24 @@ public class AiCore {
                     String current = suppressedBuffer.toString();
                     if (!forwardedToUser.get()) {
                         String trimmed = current.trim();
-                        if (trimmed.startsWith("<") && trimmed.length() < 16) {
+                        if (trimmed.startsWith("<") && trimmed.length() < 20) {
                             return;
                         }
-                        if (trimmed.startsWith("<chatai_tool")) {
+                        if (trimmed.startsWith("<chatai_tool") || trimmed.startsWith("<tool_call") || trimmed.startsWith("<chatai_followups")) {
                             return;
                         }
                         forwardedToUser.set(true);
                         outerListener.onTextDelta(current);
                         suppressedBuffer.setLength(0);
                     } else {
-                        outerListener.onTextDelta(delta);
+                        String lower = current.toLowerCase(Locale.ROOT);
+                        if (lower.contains("<chatai_followups") || lower.contains("<chatai_tool") || lower.contains("<tool_call")) {
+                            return;
+                        }
+                        if (current.endsWith("<") || lower.endsWith("<c") || lower.endsWith("<t") || lower.endsWith("<chatai")) {
+                            return;
+                        }
+                        outerListener.onTextDelta(current);
                         suppressedBuffer.setLength(0);
                     }
                 }
@@ -236,58 +317,77 @@ public class AiCore {
                 rawContent = suppressedBuffer.toString();
             }
 
+            // Ensure non-streamed thinkingContent from response is also captured in timeline
+            if (stepThinking.length() == 0 && response.getThinkingContent() != null && !response.getThinkingContent().trim().isEmpty()) {
+                String t = response.getThinkingContent().trim();
+                accumulatedThinking.append(accumulatedThinking.length() > 0 ? "\n\n" : "").append(t);
+                upsertTimelineEntry(
+                        timelineEntries,
+                        new TimelineEntry(stepThinkingId, TimelineEntry.Type.THINKING, "AI Thinking", t, "", System.currentTimeMillis())
+                );
+                outerListener.onTimelineUpdated(snapshotTimeline(timelineEntries), snapshotSources(sourceMap));
+            }
+
             List<ToolInvocation> invocations = collectInvocations(response, rawContent);
             if (invocations.isEmpty()) {
                 if (!forwardedToUser.get() && suppressedBuffer.length() > 0) {
-                    outerListener.onTextDelta(suppressedBuffer.toString());
+                    String cleanBuffered = stripControlTags(suppressedBuffer.toString());
+                    if (!cleanBuffered.isEmpty()) {
+                        outerListener.onTextDelta(cleanBuffered);
+                    }
                 }
-                String finalText = stripToolTags(rawContent);
-                if (accumulatedOutputPrefix.length() > 0 && !finalText.isEmpty()) {
-                    finalText = accumulatedOutputPrefix + "\n\n" + finalText;
-                } else if (finalText.isEmpty()) {
+                List<String> followUps = FollowUpSuggestionHelper.extractSuggestions(rawContent);
+                String finalText = stripControlTags(rawContent);
+                if (finalText.isEmpty() && accumulatedOutputPrefix.length() > 0) {
                     finalText = accumulatedOutputPrefix.toString();
                 }
+                collectUrlsFromText(finalText, sourceMap);
+                List<SourceItem> finalSources = snapshotSources(sourceMap);
+                if (!finalSources.isEmpty()) {
+                    timelineEntries.add(new TimelineEntry(
+                            "sources-final",
+                            TimelineEntry.Type.SOURCES,
+                            "Sources (" + finalSources.size() + ")",
+                            "",
+                            "",
+                            System.currentTimeMillis()
+                    ));
+                }
+                List<TimelineEntry> finalTimeline = snapshotTimeline(timelineEntries);
+                outerListener.onTimelineUpdated(finalTimeline, finalSources);
+
+                List<ToolCallRecord> finalRecords = new ArrayList<>(toolRecordMap.values());
                 outerListener.onStateChanged(ExecutionState.COMPLETED);
                 outerListener.onCompleted(new AiResponse(
                         finalText,
                         accumulatedThinking.length() > 0 ? accumulatedThinking.toString() : response.getThinkingContent(),
                         response.getTokenUsage(),
                         response.getModelId(),
-                        response.getProviderId()
+                        response.getProviderId(),
+                        Collections.emptyList(),
+                        finalRecords,
+                        followUps,
+                        finalTimeline,
+                        finalSources
                 ));
                 return;
             }
 
-            // Guard against executing external/non-memory tools on models marked TOOL_CALLING == UNSUPPORTED
-            boolean modelRejectsTools = currentRequest.getModel() != null
-                    && currentRequest.getModel().getCapabilityStatus(ModelCapability.TOOL_CALLING) == CapabilityStatus.UNSUPPORTED;
-            if (modelRejectsTools) {
-                String cleanText = stripToolTags(rawContent);
-                if (cleanText.isEmpty()) {
-                    cleanText = "The active model (" + currentRequest.getModel().getName() + ") reports Tool Calling as Unsupported, so requested tools were not executed.";
-                }
-                if (noticeListener != null) {
-                    noticeListener.onNotice("Model reports tool calling as Unsupported");
-                }
-                if (!forwardedToUser.get()) {
-                    outerListener.onTextDelta(cleanText);
-                }
-                outerListener.onStateChanged(ExecutionState.COMPLETED);
-                outerListener.onCompleted(new AiResponse(
-                        cleanText,
-                        accumulatedThinking.toString(),
-                        response.getTokenUsage(),
-                        response.getModelId(),
-                        response.getProviderId()
-                ));
-                return;
-            }
-
-            // Emit any clean explanation text produced before tool invocation
-            String stripped = stripToolTags(rawContent);
+            // Emit any clean commentary narration produced before tool invocation
+            String stripped = stripControlTags(rawContent);
             if (!stripped.isEmpty()) {
                 if (accumulatedOutputPrefix.length() > 0) accumulatedOutputPrefix.append("\n\n");
                 accumulatedOutputPrefix.append(stripped);
+                timelineEntries.add(new TimelineEntry(
+                        "commentary-step-" + currentStep,
+                        TimelineEntry.Type.COMMENTARY,
+                        "AI Commentary",
+                        stripped,
+                        "",
+                        System.currentTimeMillis()
+                ));
+                outerListener.onCommentaryDelta(stripped);
+                outerListener.onTimelineUpdated(snapshotTimeline(timelineEntries), snapshotSources(sourceMap));
             }
 
             outerListener.onStateChanged(ExecutionState.EXECUTING_TOOL);
@@ -318,8 +418,11 @@ public class AiCore {
                 }
 
                 ToolResult result = toolExecutor != null
-                        ? toolExecutor.executeSync(inv.toolName, args, handle, confirmationHandler)
+                        ? toolExecutor.executeSync(inv.toolName, args, handle, confirmationHandler, aggregatedLifecycle)
                         : toolRegistry.executeTool(inv.toolName, args);
+
+                collectSourcesFromTool(inv.toolName, args, result, sourceMap);
+                outerListener.onTimelineUpdated(snapshotTimeline(timelineEntries), snapshotSources(sourceMap));
 
                 String summary = result.isSuccess() ? result.getOutput() : ("Error: " + result.getError());
                 if (summary.length() > 8000) {
@@ -343,29 +446,58 @@ public class AiCore {
                 if (!forwardedToUser.get()) {
                     outerListener.onTextDelta(stripped);
                 }
+                List<SourceItem> finalSources = snapshotSources(sourceMap);
+                List<TimelineEntry> finalTimeline = snapshotTimeline(timelineEntries);
+                List<ToolCallRecord> finalRecords = new ArrayList<>(toolRecordMap.values());
+                outerListener.onTimelineUpdated(finalTimeline, finalSources);
                 outerListener.onStateChanged(ExecutionState.COMPLETED);
                 outerListener.onCompleted(new AiResponse(
-                        accumulatedOutputPrefix.toString(),
+                        stripped,
                         accumulatedThinking.length() > 0 ? accumulatedThinking.toString() : response.getThinkingContent(),
                         response.getTokenUsage(),
                         response.getModelId(),
-                        response.getProviderId()
+                        response.getProviderId(),
+                        Collections.emptyList(),
+                        finalRecords,
+                        FollowUpSuggestionHelper.extractSuggestions(rawContent),
+                        finalTimeline,
+                        finalSources
                 ));
                 return;
             }
 
             if (step == maxToolSteps) {
-                String fallbackSummary = accumulatedOutputPrefix.length() > 0
-                        ? accumulatedOutputPrefix + "\n\n" + observations.toString().trim()
-                        : observations.toString().trim();
-                outerListener.onTextDelta("\n" + observations.toString().trim());
+                String fallbackSummary = observations.toString().trim();
+                if (fallbackSummary.isEmpty()) {
+                    fallbackSummary = accumulatedOutputPrefix.toString();
+                }
+                outerListener.onTextDelta("\n" + fallbackSummary);
+                List<SourceItem> finalSources = snapshotSources(sourceMap);
+                if (!finalSources.isEmpty()) {
+                    timelineEntries.add(new TimelineEntry(
+                            "sources-final",
+                            TimelineEntry.Type.SOURCES,
+                            "Sources (" + finalSources.size() + ")",
+                            "",
+                            "",
+                            System.currentTimeMillis()
+                    ));
+                }
+                List<TimelineEntry> finalTimeline = snapshotTimeline(timelineEntries);
+                List<ToolCallRecord> finalRecords = new ArrayList<>(toolRecordMap.values());
+                outerListener.onTimelineUpdated(finalTimeline, finalSources);
                 outerListener.onStateChanged(ExecutionState.COMPLETED);
                 outerListener.onCompleted(new AiResponse(
                         fallbackSummary,
                         accumulatedThinking.toString(),
                         response.getTokenUsage(),
                         response.getModelId(),
-                        response.getProviderId()
+                        response.getProviderId(),
+                        Collections.emptyList(),
+                        finalRecords,
+                        Collections.emptyList(),
+                        finalTimeline,
+                        finalSources
                 ));
                 return;
             }
@@ -411,6 +543,74 @@ public class AiCore {
         }
     }
 
+    private static void upsertTimelineEntry(List<TimelineEntry> list, TimelineEntry entry) {
+        synchronized (list) {
+            for (int i = 0; i < list.size(); i++) {
+                if (entry.getId().equals(list.get(i).getId())) {
+                    list.set(i, entry);
+                    return;
+                }
+            }
+            list.add(entry);
+        }
+    }
+
+    private static List<TimelineEntry> snapshotTimeline(List<TimelineEntry> list) {
+        synchronized (list) {
+            return list.isEmpty() ? Collections.emptyList() : Collections.unmodifiableList(new ArrayList<>(list));
+        }
+    }
+
+    private static List<SourceItem> snapshotSources(Map<String, SourceItem> map) {
+        synchronized (map) {
+            return map.isEmpty() ? Collections.emptyList() : Collections.unmodifiableList(new ArrayList<>(map.values()));
+        }
+    }
+
+    private static void collectSourcesFromTool(
+            String toolName,
+            JsonObject args,
+            ToolResult result,
+            Map<String, SourceItem> sourceMap
+    ) {
+        if (toolName == null || sourceMap == null) return;
+        if ("web_fetch".equals(toolName) || "http_get".equals(toolName) || "http_post".equals(toolName) || "download_file".equals(toolName)) {
+            String url = args != null && args.has("url") ? args.get("url").getAsString().trim() : "";
+            if (!url.isEmpty()) {
+                sourceMap.putIfAbsent(url, new SourceItem(url, url, SourceItem.SourceType.WEB, toolName));
+            }
+        } else if ("internet_search".equals(toolName) && result != null && result.isSuccess()) {
+            collectUrlsFromText(result.getOutput(), sourceMap);
+        } else if (toolName.startsWith("fs_") && args != null && args.has("path")) {
+            String path = args.get("path").getAsString().trim();
+            if (!path.isEmpty()) {
+                sourceMap.putIfAbsent("file:" + path, new SourceItem(path, path, SourceItem.SourceType.FILE, toolName));
+            }
+        } else if ("terminal_run".equals(toolName) || "termux_run".equals(toolName) || "adb_shell".equals(toolName)) {
+            String cmd = args != null && args.has("command") ? args.get("command").getAsString().trim() : "";
+            if (!cmd.isEmpty()) {
+                String key = "tool:" + toolName + ":" + cmd;
+                sourceMap.putIfAbsent(key, new SourceItem(toolName + ": " + cmd, cmd, SourceItem.SourceType.TOOL, ""));
+            }
+        }
+    }
+
+    private static final Pattern URL_EXTRACT_PATTERN = Pattern.compile("https?://[^\\s<>()\\]\"']+");
+
+    private static void collectUrlsFromText(String text, Map<String, SourceItem> sourceMap) {
+        if (text == null || text.isEmpty() || sourceMap == null) return;
+        Matcher m = URL_EXTRACT_PATTERN.matcher(text);
+        while (m.find()) {
+            String url = m.group();
+            while (url.endsWith(".") || url.endsWith(",") || url.endsWith(";") || url.endsWith(")")) {
+                url = url.substring(0, url.length() - 1);
+            }
+            if (url.length() > 10) {
+                sourceMap.putIfAbsent(url, new SourceItem(url, url, SourceItem.SourceType.WEB, ""));
+            }
+        }
+    }
+
     private static List<ToolInvocation> collectInvocations(AiResponse response, String rawContent) {
         List<ToolInvocation> list = new ArrayList<>();
         if (response != null && response.hasToolCalls()) {
@@ -435,25 +635,147 @@ public class AiCore {
         return sb.toString();
     }
 
+    private static final Pattern CHAT_TOOL_OPEN_PATTERN = Pattern.compile(
+            "<chatai_tool\\s+name\\s*=\\s*[\"']([a-zA-Z0-9_]+)[\"']\\s*>",
+            Pattern.CASE_INSENSITIVE
+    );
+    private static final Pattern TOOL_CALL_OPEN_PATTERN = Pattern.compile(
+            "<tool_call\\s*>",
+            Pattern.CASE_INSENSITIVE
+    );
+
     public static List<ToolInvocation> parseToolInvocations(String text) {
         List<ToolInvocation> list = new ArrayList<>();
         if (text == null || text.isEmpty()) return list;
-        Matcher matcher = CHAT_TOOL_PATTERN.matcher(text);
-        while (matcher.find()) {
-            String toolName = matcher.group(1);
-            String jsonArgs = matcher.group(2);
-            try {
-                JsonObject obj = JsonParser.parseString(jsonArgs).getAsJsonObject();
-                list.add(new ToolInvocation(toolName.toLowerCase(Locale.ROOT), obj));
-            } catch (Exception ignored) {
+
+        // 1. Parse <chatai_tool name="..."> { ... } </chatai_tool> using string-aware brace balancing
+        Matcher m = CHAT_TOOL_OPEN_PATTERN.matcher(text);
+        while (m.find()) {
+            String toolName = m.group(1);
+            int bodyStart = m.end();
+            int[] jsonBounds = findBalancedJsonObject(text, bodyStart);
+            if (jsonBounds != null) {
+                String jsonArgs = text.substring(jsonBounds[0], jsonBounds[1]);
+                try {
+                    JsonObject obj = JsonParser.parseString(jsonArgs).getAsJsonObject();
+                    list.add(new ToolInvocation(toolName.toLowerCase(Locale.ROOT), obj));
+                } catch (Exception ignored) {
+                }
+            }
+        }
+
+        // 2. Also support <tool_call>{"name":"...","arguments":{...}}</tool_call> emitted by some open models
+        Matcher tcMatcher = TOOL_CALL_OPEN_PATTERN.matcher(text);
+        while (tcMatcher.find()) {
+            int[] jsonBounds = findBalancedJsonObject(text, tcMatcher.end());
+            if (jsonBounds != null) {
+                String rawJson = text.substring(jsonBounds[0], jsonBounds[1]);
+                try {
+                    JsonObject root = JsonParser.parseString(rawJson).getAsJsonObject();
+                    String name = root.has("name") && root.get("name").isJsonPrimitive()
+                            ? root.get("name").getAsString().trim()
+                            : "";
+                    if (!name.isEmpty()) {
+                        JsonObject args = new JsonObject();
+                        JsonElement argsEl = root.has("arguments") ? root.get("arguments") : root.get("args");
+                        if (argsEl != null) {
+                            if (argsEl.isJsonObject()) {
+                                args = argsEl.getAsJsonObject();
+                            } else if (argsEl.isJsonPrimitive()) {
+                                JsonElement parsed = JsonParser.parseString(argsEl.getAsString());
+                                if (parsed.isJsonObject()) args = parsed.getAsJsonObject();
+                            }
+                        }
+                        list.add(new ToolInvocation(name.toLowerCase(Locale.ROOT), args));
+                    }
+                } catch (Exception ignored) {
+                }
             }
         }
         return list;
     }
 
+    /**
+     * Scans for a balanced `{ ... }` JSON object starting at/after `searchFrom`,
+     * properly skipping `{` and `}` inside quoted JSON string literals.
+     */
+    private static int[] findBalancedJsonObject(String text, int searchFrom) {
+        int len = text.length();
+        int idx = searchFrom;
+        while (idx < len && Character.isWhitespace(text.charAt(idx))) {
+            idx++;
+        }
+        if (idx >= len || text.charAt(idx) != '{') {
+            return null;
+        }
+        int start = idx;
+        int depth = 0;
+        boolean inString = false;
+        boolean escaped = false;
+        for (int i = start; i < len; i++) {
+            char c = text.charAt(i);
+            if (inString) {
+                if (escaped) {
+                    escaped = false;
+                } else if (c == '\\') {
+                    escaped = true;
+                } else if (c == '"') {
+                    inString = false;
+                }
+            } else {
+                if (c == '"') {
+                    inString = true;
+                } else if (c == '{') {
+                    depth++;
+                } else if (c == '}') {
+                    depth--;
+                    if (depth == 0) {
+                        return new int[]{start, i + 1};
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
     public static String stripToolTags(String text) {
+        if (text == null || text.isEmpty()) return "";
+        String result = stripNamedToolBlocks(text, "<chatai_tool", "</chatai_tool>");
+        result = stripNamedToolBlocks(result, "<tool_call", "</tool_call>");
+        result = result.replaceAll("\\n{3,}", "\n\n");
+        return result.trim();
+    }
+
+    private static String stripNamedToolBlocks(String text, String openPrefix, String closeTag) {
+        String lower = text.toLowerCase(Locale.ROOT);
+        StringBuilder out = new StringBuilder(text.length());
+        int cursor = 0;
+        while (cursor < text.length()) {
+            int start = lower.indexOf(openPrefix, cursor);
+            if (start < 0) {
+                out.append(text, cursor, text.length());
+                break;
+            }
+            out.append(text, cursor, start);
+            int openGt = text.indexOf('>', start);
+            if (openGt < 0) {
+                break;
+            }
+            int[] jsonBounds = findBalancedJsonObject(text, openGt + 1);
+            int searchCloseFrom = jsonBounds != null ? jsonBounds[1] : (openGt + 1);
+            int closeStart = lower.indexOf(closeTag, searchCloseFrom);
+            if (closeStart < 0) {
+                // Partial/unclosed streaming tag at tail: drop from start to end
+                break;
+            }
+            cursor = closeStart + closeTag.length();
+        }
+        return out.toString();
+    }
+
+    public static String stripControlTags(String text) {
         if (text == null) return "";
-        return CHAT_TOOL_PATTERN.matcher(text).replaceAll("").trim();
+        return FollowUpSuggestionHelper.stripFollowUpTags(stripToolTags(text));
     }
 
     public void executeBlocking(

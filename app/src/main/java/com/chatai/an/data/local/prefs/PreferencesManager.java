@@ -92,7 +92,7 @@ public class PreferencesManager {
                 prefs.getBoolean(KEY_CONFIRM_DELETE, true),
                 prefs.getBoolean(KEY_AUTO_TITLE, true),
                 AppLanguage.fromTag(prefs.getString(KEY_LANGUAGE_TAG, AppLanguage.ENGLISH.getTag())),
-                AgentMode.fromName(prefs.getString(KEY_DEFAULT_AGENT_MODE, AgentMode.CHAT.name())),
+                AgentMode.fromName(prefs.getString(KEY_DEFAULT_AGENT_MODE, AgentMode.CODING.name())),
                 prefs.getInt(KEY_AGENT_MAX_STEPS, 8),
                 prefs.getInt(KEY_TOOL_TIMEOUT_SECONDS, 30),
                 prefs.getBoolean(KEY_CHAT_TOOLS_ENABLED, true),

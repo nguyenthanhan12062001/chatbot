@@ -87,6 +87,18 @@
                 android:text="@string/terminal_backend_termux"
                 android:textSize="11.5sp"
                 android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/btn_backend_shizuku"
+                android:layout_width="wrap_content"
+                android:layout_height="32dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center"
+                android:paddingHorizontal="10dp"
+                android:text="@string/terminal_backend_shizuku"
+                android:textSize="11.5sp"
+                android:textStyle="bold" />
         </LinearLayout>
 
         <ImageButton

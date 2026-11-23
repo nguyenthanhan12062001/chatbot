@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/sources_accordion_root"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginTop="4dp"
+    android:orientation="vertical"
+    android:paddingHorizontal="12dp"
+    android:paddingVertical="8dp">
+
+    <LinearLayout
+        android:id="@+id/ll_sources_header"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="?attr/selectableItemBackground"
+        android:clickable="true"
+        android:focusable="true"
+        android:gravity="center_vertical"
+        android:minHeight="36dp"
+        android:orientation="horizontal">
+
+        <ImageView
+            android:id="@+id/iv_sources_icon"
+            android:layout_width="15dp"
+            android:layout_height="15dp"
+            android:contentDescription="@null"
+            android:src="@drawable/ic_public" />
+
+        <TextView
+            android:id="@+id/tv_sources_title"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="7dp"
+            android:layout_weight="1"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            tools:text="Sources (3)" />
+
+        <TextView
+            android:id="@+id/tv_sources_toggle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:text="@string/timeline_show_sources"
+            android:textSize="11sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/ll_sources_list"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:orientation="vertical"
+        android:visibility="gone"
+        tools:visibility="visible" />
+</LinearLayout>

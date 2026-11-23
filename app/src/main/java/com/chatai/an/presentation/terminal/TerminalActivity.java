@@ -24,6 +24,7 @@ import androidx.core.view.WindowInsetsCompat;
 import androidx.lifecycle.ViewModelProvider;
 
 import com.chatai.an.R;
+import com.chatai.an.ai.integration.shizuku.ShizukuIntegrationManager;
 import com.chatai.an.ai.integration.termux.TermuxIntegrationManager;
 import com.chatai.an.app.ChatAiApplication;
 import com.chatai.an.databinding.ActivityTerminalBinding;
@@ -87,6 +88,7 @@ public class TerminalActivity extends AppCompatActivity {
         binding.btnTerminalBack.setOnClickListener(v -> finish());
         binding.btnBackendApp.setOnClickListener(v -> viewModel.selectBackend(TerminalBackend.APP_TERMINAL));
         binding.btnBackendTermux.setOnClickListener(v -> viewModel.selectBackend(TerminalBackend.TERMUX));
+        binding.btnBackendShizuku.setOnClickListener(v -> viewModel.selectBackend(TerminalBackend.SHIZUKU));
 
         binding.btnTerminalCopy.setOnClickListener(v -> {
             String text = viewModel.getPlainTextSnapshot();
@@ -257,6 +259,7 @@ public class TerminalActivity extends AppCompatActivity {
         });
 
         viewModel.getTermuxState().observe(this, s -> updateStatusBanner());
+        viewModel.getShizukuState().observe(this, s -> updateStatusBanner());
         viewModel.getAppTerminalState().observe(this, s -> updateStatusBanner());
     }
 
@@ -274,6 +277,16 @@ public class TerminalActivity extends AppCompatActivity {
             } else {
                 String detail = tState != null ? tState.detail : "Setup required";
                 binding.tvTerminalStatus.setText(getString(R.string.terminal_status_termux_setup, detail));
+                binding.btnTerminalOpenHub.setVisibility(View.VISIBLE);
+            }
+        } else if (activeBackend == TerminalBackend.SHIZUKU) {
+            ShizukuIntegrationManager.ShizukuState sState = viewModel.getShizukuState().getValue();
+            if (sState != null && (sState.status == IntegrationStatus.ACTIVE || sState.status == IntegrationStatus.CONNECTED)) {
+                binding.tvTerminalStatus.setText(getString(R.string.terminal_status_shizuku_ready, sState.privilegeLevel.getLabel()));
+                binding.btnTerminalOpenHub.setVisibility(View.GONE);
+            } else {
+                String detail = sState != null ? sState.detail : "Setup required";
+                binding.tvTerminalStatus.setText(getString(R.string.terminal_status_shizuku_setup, detail));
                 binding.btnTerminalOpenHub.setVisibility(View.VISIBLE);
             }
         } else {
@@ -294,17 +307,17 @@ public class TerminalActivity extends AppCompatActivity {
                 palette.getBorderColor(),
                 stroke
         ));
-        boolean isApp = activeBackend == TerminalBackend.APP_TERMINAL;
-        if (isApp) {
-            binding.btnBackendApp.setBackground(GradientDrawableFactory.createLinearGradient(palette, 999f));
-            binding.btnBackendApp.setTextColor(palette.getOnPrimaryColor());
-            binding.btnBackendTermux.setBackground(null);
-            binding.btnBackendTermux.setTextColor(palette.getTextSecondaryColor());
-        } else {
-            binding.btnBackendTermux.setBackground(GradientDrawableFactory.createLinearGradient(palette, 999f));
-            binding.btnBackendTermux.setTextColor(palette.getOnPrimaryColor());
-            binding.btnBackendApp.setBackground(null);
-            binding.btnBackendApp.setTextColor(palette.getTextSecondaryColor());
+        TextView[] buttons = {binding.btnBackendApp, binding.btnBackendTermux, binding.btnBackendShizuku};
+        TerminalBackend[] backends = {TerminalBackend.APP_TERMINAL, TerminalBackend.TERMUX, TerminalBackend.SHIZUKU};
+        for (int i = 0; i < buttons.length; i++) {
+            boolean selected = activeBackend == backends[i];
+            if (selected) {
+                buttons[i].setBackground(GradientDrawableFactory.createLinearGradient(palette, 999f));
+                buttons[i].setTextColor(palette.getOnPrimaryColor());
+            } else {
+                buttons[i].setBackground(null);
+                buttons[i].setTextColor(palette.getTextSecondaryColor());
+            }
         }
     }
 

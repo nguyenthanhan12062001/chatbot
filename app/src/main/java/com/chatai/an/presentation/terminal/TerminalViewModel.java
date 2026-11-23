@@ -4,6 +4,7 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
+import com.chatai.an.ai.integration.shizuku.ShizukuIntegrationManager;
 import com.chatai.an.ai.integration.terminal.AppTerminalManager;
 import com.chatai.an.ai.integration.terminal.TerminalSession;
 import com.chatai.an.ai.integration.termux.TermuxIntegrationManager;
@@ -21,6 +22,7 @@ public class TerminalViewModel extends ViewModel {
 
     private final AppTerminalManager appTerminalManager;
     private final TermuxIntegrationManager termuxManager;
+    private final ShizukuIntegrationManager shizukuManager;
     private final SettingsRepository settingsRepository;
     private final ThemeRepository themeRepository;
     private final AppExecutors executors;
@@ -39,8 +41,20 @@ public class TerminalViewModel extends ViewModel {
             ThemeRepository themeRepository,
             AppExecutors executors
     ) {
+        this(appTerminalManager, termuxManager, null, settingsRepository, themeRepository, executors);
+    }
+
+    public TerminalViewModel(
+            AppTerminalManager appTerminalManager,
+            TermuxIntegrationManager termuxManager,
+            ShizukuIntegrationManager shizukuManager,
+            SettingsRepository settingsRepository,
+            ThemeRepository themeRepository,
+            AppExecutors executors
+    ) {
         this.appTerminalManager = appTerminalManager;
         this.termuxManager = termuxManager;
+        this.shizukuManager = shizukuManager;
         this.settingsRepository = settingsRepository;
         this.themeRepository = themeRepository;
         this.executors = executors;
@@ -50,7 +64,7 @@ public class TerminalViewModel extends ViewModel {
                 ? snapshot.getPreferredTerminalBackend()
                 : TerminalBackend.APP_TERMINAL;
 
-        this.session = new TerminalSession(appTerminalManager, termuxManager, initialBackend);
+        this.session = new TerminalSession(appTerminalManager, termuxManager, shizukuManager, initialBackend);
         this.session.setListener(new TerminalSession.SessionListener() {
             @Override
             public void onOutputChanged(CharSequence fullOutput) {
@@ -76,6 +90,10 @@ public class TerminalViewModel extends ViewModel {
 
     public LiveData<TermuxIntegrationManager.TermuxState> getTermuxState() {
         return termuxManager.observeState();
+    }
+
+    public LiveData<ShizukuIntegrationManager.ShizukuState> getShizukuState() {
+        return shizukuManager != null ? shizukuManager.observeState() : new MutableLiveData<>();
     }
 
     public LiveData<AppTerminalManager.TerminalState> getAppTerminalState() {
@@ -109,6 +127,9 @@ public class TerminalViewModel extends ViewModel {
         executors.diskIO().execute(() -> {
             appTerminalManager.refreshState();
             termuxManager.refreshState();
+            if (shizukuManager != null) {
+                shizukuManager.refreshState();
+            }
         });
     }
 

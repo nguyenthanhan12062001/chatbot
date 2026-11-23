@@ -236,11 +236,15 @@ public class SettingsActivity extends AppCompatActivity {
             currentLanguage = settings.getLanguage();
             currentTerminalBackend = settings.getPreferredTerminalBackend();
             binding.tvLanguageValue.setText(currentLanguage.getNativeName());
-            binding.tvTerminalBackendValue.setText(
-                    currentTerminalBackend == TerminalBackend.TERMUX
-                            ? getString(R.string.terminal_backend_termux_desc)
-                            : getString(R.string.terminal_backend_app_desc)
-            );
+            String backendDesc;
+            if (currentTerminalBackend == TerminalBackend.TERMUX) {
+                backendDesc = getString(R.string.terminal_backend_termux_desc);
+            } else if (currentTerminalBackend == TerminalBackend.SHIZUKU) {
+                backendDesc = getString(R.string.terminal_backend_shizuku_desc);
+            } else {
+                backendDesc = getString(R.string.terminal_backend_app_desc);
+            }
+            binding.tvTerminalBackendValue.setText(backendDesc);
             binding.switchAutoTitle.setChecked(settings.isAutoTitleFromFirstMessage());
             binding.switchConfirmDelete.setChecked(settings.isConfirmBeforeDelete());
             binding.switchChatBubble.setChecked(
@@ -302,13 +306,17 @@ public class SettingsActivity extends AppCompatActivity {
     private void showTerminalBackendDialog() {
         TerminalBackend[] options = new TerminalBackend[]{
                 TerminalBackend.APP_TERMINAL,
-                TerminalBackend.TERMUX
+                TerminalBackend.TERMUX,
+                TerminalBackend.SHIZUKU
         };
         String[] labels = new String[]{
                 getString(R.string.terminal_backend_app) + "\n(" + getString(R.string.terminal_backend_app_desc) + ")",
-                getString(R.string.terminal_backend_termux) + "\n(" + getString(R.string.terminal_backend_termux_desc) + ")"
+                getString(R.string.terminal_backend_termux) + "\n(" + getString(R.string.terminal_backend_termux_desc) + ")",
+                getString(R.string.terminal_backend_shizuku) + "\n(" + getString(R.string.terminal_backend_shizuku_desc) + ")"
         };
-        int checked = currentTerminalBackend == TerminalBackend.TERMUX ? 1 : 0;
+        int checked = 0;
+        if (currentTerminalBackend == TerminalBackend.TERMUX) checked = 1;
+        else if (currentTerminalBackend == TerminalBackend.SHIZUKU) checked = 2;
         new MaterialAlertDialogBuilder(this)
                 .setTitle(R.string.terminal_backend_choose_title)
                 .setSingleChoiceItems(labels, checked, (dialog, which) -> {

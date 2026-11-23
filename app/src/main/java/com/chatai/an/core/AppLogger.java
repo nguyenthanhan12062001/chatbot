@@ -16,6 +16,10 @@ public final class AppLogger {
         }
     }
 
+    public static void i(String tag, String message) {
+        Log.i(PREFIX + tag, message);
+    }
+
     public static void w(String tag, String message) {
         Log.w(PREFIX + tag, message);
     }

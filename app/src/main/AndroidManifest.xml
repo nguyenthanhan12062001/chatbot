@@ -12,8 +12,9 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <uses-permission android:name="com.termux.permission.RUN_COMMAND" />
-    <uses-permission android:name="moe.shizuku.manager.permission.API" />
+    <uses-permission android:name="moe.shizuku.manager.permission.API_V23" />
 
     <queries>
         <package android:name="com.termux" />
@@ -49,14 +50,17 @@
                 android:resource="@xml/file_paths" />
         </provider>
 
+        <provider
+            android:name="rikka.shizuku.ShizukuProvider"
+            android:authorities="${applicationId}.shizuku"
+            android:enabled="true"
+            android:exported="true"
+            android:multiprocess="false"
+            android:permission="android.permission.INTERACT_ACROSS_USERS_FULL" />
+
         <receiver
             android:name=".ai.integration.termux.TermuxResultReceiver"
             android:exported="false" />
-
-        <service
-            android:name=".ai.integration.shizuku.ShizukuShellUserService"
-            android:exported="true"
-            android:process=":shizuku_shell" />
 
         <service
             android:name=".presentation.bubble.ChatBubbleService"
@@ -65,6 +69,15 @@
             <property
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="Floating Messenger-style AI chat bubble overlay for quick access to AnAI across apps." />
+        </service>
+
+        <service
+            android:name=".ai.integration.adb.EmbeddedAdbForegroundService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Embedded Wireless ADB background service for maintaining ADB shell connection under UID 2000." />
         </service>
 
         <activity

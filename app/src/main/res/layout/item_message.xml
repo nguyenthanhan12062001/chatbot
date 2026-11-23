@@ -126,6 +126,24 @@
             android:visibility="gone" />
     </com.chatai.an.presentation.chat.MaxWidthLinearLayout>
 
+    <!-- Inline Tool Execution Cards (legacy fallback when timelineEntries is empty) -->
+    <com.chatai.an.presentation.chat.MaxWidthLinearLayout
+        android:id="@+id/ll_tool_cards_container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="4dp"
+        android:orientation="vertical"
+        android:visibility="gone" />
+
+    <!-- Chronological AI Activity Timeline (Thinking -> Tool Calls -> Commentary) -->
+    <com.chatai.an.presentation.chat.MaxWidthLinearLayout
+        android:id="@+id/ll_timeline_container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="4dp"
+        android:orientation="vertical"
+        android:visibility="gone" />
+
     <!-- Dynamic Content-Hugging Chat Bubble -->
     <com.chatai.an.presentation.chat.MaxWidthLinearLayout
         android:id="@+id/message_bubble_container"
@@ -143,13 +161,23 @@
             android:orientation="horizontal"
             android:visibility="gone" />
 
-        <!-- Dynamic Markdown, Table & Code Block container -->
+        <!-- Dynamic Markdown, Table, LaTeX, Image & Code Block container -->
         <LinearLayout
             android:id="@+id/markdown_segments_container"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:orientation="vertical" />
     </com.chatai.an.presentation.chat.MaxWidthLinearLayout>
+
+    <!-- Expandable Referenced Sources Accordion -->
+    <com.chatai.an.presentation.chat.MaxWidthLinearLayout
+        android:id="@+id/ll_sources_container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:layout_marginBottom="2dp"
+        android:orientation="vertical"
+        android:visibility="gone" />
 
     <!-- Compact Metadata & Action Strip (outside bubble so it never inflates bubble size) -->
     <LinearLayout
@@ -219,6 +247,16 @@
             android:src="@drawable/ic_copy" />
 
         <ImageButton
+            android:id="@+id/btn_msg_regenerate"
+            android:layout_width="32dp"
+            android:layout_height="30dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/action_regenerate"
+            android:padding="7dp"
+            android:scaleType="centerInside"
+            android:src="@drawable/ic_refresh" />
+
+        <ImageButton
             android:id="@+id/btn_msg_edit"
             android:layout_width="32dp"
             android:layout_height="30dp"
@@ -238,4 +276,52 @@
             android:scaleType="centerInside"
             android:src="@drawable/ic_delete" />
     </LinearLayout>
+
+    <!-- Continue in Code handover chip & Suggested Follow-Up Chips (latest completed assistant message) -->
+    <com.chatai.an.presentation.chat.MaxWidthLinearLayout
+        android:id="@+id/ll_post_message_actions"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:id="@+id/btn_msg_handover_code"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="4dp"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center_vertical"
+            android:minHeight="34dp"
+            android:orientation="horizontal"
+            android:paddingHorizontal="10dp"
+            android:paddingVertical="5dp"
+            android:visibility="gone">
+
+            <ImageView
+                android:id="@+id/iv_handover_code"
+                android:layout_width="14dp"
+                android:layout_height="14dp"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_build" />
+
+            <TextView
+                android:id="@+id/tv_handover_code"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="5dp"
+                android:text="@string/action_continue_in_code"
+                android:textSize="11.5sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/ll_follow_up_chips_container"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone" />
+    </com.chatai.an.presentation.chat.MaxWidthLinearLayout>
 </LinearLayout>

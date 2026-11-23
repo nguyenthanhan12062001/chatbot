@@ -20,7 +20,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase;
                 AgentTaskEntity.class,
                 LocalModelEntity.class
         },
-        version = 3,
+        version = 5,
         exportSchema = false
 )
 public abstract class ChatDatabase extends RoomDatabase {
@@ -120,6 +120,22 @@ public abstract class ChatDatabase extends RoomDatabase {
         }
     };
 
+    public static final Migration MIGRATION_3_4 = new Migration(3, 4) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase db) {
+            db.execSQL("ALTER TABLE messages ADD COLUMN tool_records_json TEXT NOT NULL DEFAULT '[]'");
+            db.execSQL("ALTER TABLE messages ADD COLUMN follow_ups_json TEXT NOT NULL DEFAULT '[]'");
+        }
+    };
+
+    public static final Migration MIGRATION_4_5 = new Migration(4, 5) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase db) {
+            db.execSQL("ALTER TABLE messages ADD COLUMN timeline_json TEXT NOT NULL DEFAULT '[]'");
+            db.execSQL("ALTER TABLE messages ADD COLUMN sources_json TEXT NOT NULL DEFAULT '[]'");
+        }
+    };
+
     public abstract ConversationDao conversationDao();
 
     public abstract MessageDao messageDao();
@@ -145,7 +161,7 @@ public abstract class ChatDatabase extends RoomDatabase {
                                     ChatDatabase.class,
                                     "chatai_local.db"
                             )
-                            .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
                             .build();
                 }
             }

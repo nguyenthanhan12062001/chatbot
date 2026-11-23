@@ -2,8 +2,10 @@ package com.chatai.an.ai.integration.shizuku;
 
 import android.content.ComponentName;
 import android.content.Context;
+import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.IBinder;
 
@@ -19,8 +21,8 @@ import java.util.concurrent.TimeUnit;
 import rikka.shizuku.Shizuku;
 
 /**
- * Manages real Shizuku Binder lifecycle, permission checks, and UserService binding.
- * Explicitly distinguishes between UID 0 (Root), UID 2000 (ADB Shell), and disconnected states.
+ * Manages real Shizuku Binder lifecycle, v11/v13 permission flow, UserService binding, and diagnostics.
+ * Explicitly distinguishes between UID 0 (Root), UID 2000 (ADB Shell), and disconnected/ungranted states.
  */
 public class ShizukuIntegrationManager {
     public static final String SHIZUKU_PACKAGE = "moe.shizuku.privileged.api";
@@ -94,18 +96,30 @@ public class ShizukuIntegrationManager {
         }
     }
 
+    public enum QuickActionOutcome {
+        ALREADY_ACTIVE,
+        PERMISSION_REQUESTED,
+        BIND_INITIATED,
+        OPENED_SHIZUKU_APP,
+        SHOW_RATIONALE_NEEDED,
+        FAILED
+    }
+
     private final Context context;
     private final MutableLiveData<ShizukuState> stateLiveData = new MutableLiveData<>();
     private final Shizuku.UserServiceArgs userServiceArgs;
+    private final Object bindLock = new Object();
 
     private volatile IShizukuShellService boundService;
     private volatile int lastKnownUid = -1;
     private volatile String lastError = "";
     private volatile CountDownLatch bindLatch;
+    private volatile boolean bindingInProgress = false;
 
     private final ServiceConnection serviceConnection = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
+            bindingInProgress = false;
             if (service != null && service.pingBinder()) {
                 boundService = IShizukuShellService.Stub.asInterface(service);
                 try {
@@ -125,6 +139,7 @@ public class ShizukuIntegrationManager {
 
         @Override
         public void onServiceDisconnected(ComponentName name) {
+            bindingInProgress = false;
             boundService = null;
             lastKnownUid = -1;
             refreshState();
@@ -138,6 +153,7 @@ public class ShizukuIntegrationManager {
     };
 
     private final Shizuku.OnBinderDeadListener binderDeadListener = () -> {
+        bindingInProgress = false;
         boundService = null;
         lastKnownUid = -1;
         refreshState();
@@ -146,7 +162,10 @@ public class ShizukuIntegrationManager {
     private final Shizuku.OnRequestPermissionResultListener permissionResultListener = (requestCode, grantResult) -> {
         if (requestCode == REQUEST_CODE_SHIZUKU) {
             if (grantResult == PackageManager.PERMISSION_GRANTED) {
+                lastError = "";
                 tryBindIfPermitted();
+            } else {
+                lastError = "Permission denied in Shizuku.";
             }
             refreshState();
         }
@@ -157,6 +176,7 @@ public class ShizukuIntegrationManager {
         this.userServiceArgs = new Shizuku.UserServiceArgs(
                 new ComponentName(this.context.getPackageName(), ShizukuShellUserService.class.getName())
         )
+                .tag("chatai_shizuku_shell")
                 .daemon(false)
                 .processNameSuffix("shizuku_shell")
                 .debuggable(BuildConfig.DEBUG)
@@ -167,7 +187,7 @@ public class ShizukuIntegrationManager {
             Shizuku.addBinderDeadListener(binderDeadListener);
             Shizuku.addRequestPermissionResultListener(permissionResultListener);
         } catch (Throwable ignored) {
-            // Safe when running under unit test/Robolectric without ShizukuProvider initialized
+            // Safe under Robolectric/unit test environments
         }
         refreshState();
     }
@@ -187,16 +207,92 @@ public class ShizukuIntegrationManager {
         return current;
     }
 
+    public String getShortStatusBadge() {
+        ShizukuState s = inspectState();
+        if (s.status == IntegrationStatus.ACTIVE) {
+            if (s.privilegeLevel == PrivilegeLevel.ROOT) return "Shizuku • Root";
+            if (s.privilegeLevel == PrivilegeLevel.SHELL) return "Shizuku • ADB";
+            return "Shizuku • Active";
+        }
+        if (s.status == IntegrationStatus.CONNECTED) {
+            return "Shizuku • Ready";
+        }
+        if (s.status == IntegrationStatus.PERMISSION_REQUIRED) {
+            return "Shizuku • Grant";
+        }
+        if (s.status == IntegrationStatus.NOT_CONNECTED) {
+            return "Shizuku • Stopped";
+        }
+        if (s.status == IntegrationStatus.ERROR) {
+            return "Shizuku • Error";
+        }
+        return "Shizuku • Off";
+    }
+
+    public boolean shouldShowRationale() {
+        try {
+            return Shizuku.pingBinder()
+                    && !Shizuku.isPreV11()
+                    && Shizuku.checkSelfPermission() != PackageManager.PERMISSION_GRANTED
+                    && Shizuku.shouldShowRequestPermissionRationale();
+        } catch (Throwable ignored) {
+            return false;
+        }
+    }
+
+    public boolean openShizukuApp(Context launcherContext) {
+        Context targetCtx = launcherContext != null ? launcherContext : this.context;
+        try {
+            Intent launch = targetCtx.getPackageManager().getLaunchIntentForPackage(SHIZUKU_PACKAGE);
+            if (launch != null) {
+                if (!(launcherContext instanceof android.app.Activity)) {
+                    launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                }
+                targetCtx.startActivity(launch);
+                return true;
+            }
+            Intent web = new Intent(Intent.ACTION_VIEW, Uri.parse("https://shizuku.rikka.app/"));
+            if (!(launcherContext instanceof android.app.Activity)) {
+                web.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            }
+            targetCtx.startActivity(web);
+            return false;
+        } catch (Throwable ignored) {
+            return false;
+        }
+    }
+
+    public QuickActionOutcome requestOrConnect(Context uiContext) {
+        ShizukuState state = inspectState();
+        if (!state.appInstalled || !state.binderAlive) {
+            openShizukuApp(uiContext);
+            return QuickActionOutcome.OPENED_SHIZUKU_APP;
+        }
+        if (!state.permissionGranted) {
+            if (shouldShowRationale()) {
+                return QuickActionOutcome.SHOW_RATIONALE_NEEDED;
+            }
+            return requestPermission() ? QuickActionOutcome.PERMISSION_REQUESTED : QuickActionOutcome.FAILED;
+        }
+        if (!state.userServiceBound) {
+            tryBindIfPermitted();
+            return QuickActionOutcome.BIND_INITIATED;
+        }
+        return QuickActionOutcome.ALREADY_ACTIVE;
+    }
+
     public ShizukuState inspectState() {
         boolean installed = isShizukuInstalled();
         boolean binderAlive = false;
+        boolean preV11 = false;
         boolean permGranted = false;
         int shizukuServerUid = -1;
 
         try {
             binderAlive = Shizuku.pingBinder();
             if (binderAlive) {
-                permGranted = Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED;
+                preV11 = Shizuku.isPreV11();
+                permGranted = !preV11 && Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED;
                 shizukuServerUid = Shizuku.getUid();
             }
         } catch (Throwable ignored) {
@@ -229,6 +325,19 @@ public class ShizukuIntegrationManager {
             );
         }
 
+        if (preV11) {
+            return new ShizukuState(
+                    IntegrationStatus.ERROR,
+                    installed,
+                    true,
+                    false,
+                    false,
+                    shizukuServerUid,
+                    PrivilegeLevel.NONE,
+                    "Installed Shizuku version is older than API v11. Please update Shizuku."
+            );
+        }
+
         if (!permGranted) {
             PrivilegeLevel serverPriv = mapUid(shizukuServerUid);
             return new ShizukuState(
@@ -243,7 +352,7 @@ public class ShizukuIntegrationManager {
             );
         }
 
-        boolean bound = boundService != null && boundService.asBinder().pingBinder();
+        boolean bound = isBoundServiceAlive();
         int effectiveUid = bound && lastKnownUid >= 0 ? lastKnownUid : shizukuServerUid;
         PrivilegeLevel priv = mapUid(effectiveUid);
 
@@ -281,13 +390,16 @@ public class ShizukuIntegrationManager {
                 false,
                 effectiveUid,
                 priv,
-                "Shizuku Binder connected (" + priv.getLabel() + "). Tap Bind / Test to start Shell UserService."
+                "Shizuku Binder connected (" + priv.getLabel() + "). Ready to bind Shell UserService."
         );
     }
 
     public boolean requestPermission() {
         try {
-            if (!Shizuku.pingBinder()) return false;
+            if (!Shizuku.pingBinder() || Shizuku.isPreV11()) {
+                refreshState();
+                return false;
+            }
             if (Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED) {
                 tryBindIfPermitted();
                 return true;
@@ -302,37 +414,54 @@ public class ShizukuIntegrationManager {
     }
 
     public void tryBindIfPermitted() {
-        try {
-            if (Shizuku.pingBinder() && Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED) {
-                if (boundService == null || !boundService.asBinder().pingBinder()) {
-                    bindLatch = new CountDownLatch(1);
-                    Shizuku.bindUserService(userServiceArgs, serviceConnection);
+        synchronized (bindLock) {
+            try {
+                if (Shizuku.pingBinder()
+                        && !Shizuku.isPreV11()
+                        && Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED) {
+                    if (!isBoundServiceAlive() && !bindingInProgress) {
+                        bindingInProgress = true;
+                        bindLatch = new CountDownLatch(1);
+                        Shizuku.bindUserService(userServiceArgs, serviceConnection);
+                    }
                 }
+            } catch (Throwable t) {
+                bindingInProgress = false;
+                lastError = t.getMessage() != null ? t.getMessage() : "Failed to bind Shizuku UserService";
+                refreshState();
             }
-        } catch (Throwable t) {
-            lastError = t.getMessage() != null ? t.getMessage() : "Failed to bind Shizuku UserService";
-            refreshState();
         }
     }
 
     public ShizukuState bindAndVerifySync() {
         try {
-            if (!Shizuku.pingBinder()) {
+            if (!Shizuku.pingBinder() || Shizuku.isPreV11()) {
                 return refreshState();
             }
             if (Shizuku.checkSelfPermission() != PackageManager.PERMISSION_GRANTED) {
                 return refreshState();
             }
-            if (boundService == null || !boundService.asBinder().pingBinder()) {
-                bindLatch = new CountDownLatch(1);
-                Shizuku.bindUserService(userServiceArgs, serviceConnection);
-                bindLatch.await(4, TimeUnit.SECONDS);
+            if (!isBoundServiceAlive()) {
+                synchronized (bindLock) {
+                    if (!isBoundServiceAlive()) {
+                        bindingInProgress = true;
+                        bindLatch = new CountDownLatch(1);
+                        Shizuku.bindUserService(userServiceArgs, serviceConnection);
+                    }
+                }
+                CountDownLatch latch = bindLatch;
+                if (latch != null) {
+                    latch.await(5, TimeUnit.SECONDS);
+                }
             }
-            if (boundService != null && boundService.asBinder().pingBinder()) {
+            if (isBoundServiceAlive()) {
                 lastKnownUid = boundService.getUid();
                 lastError = "";
+            } else if (lastError.isEmpty()) {
+                lastError = "Timed out waiting for Shizuku UserService binder.";
             }
         } catch (Throwable t) {
+            bindingInProgress = false;
             lastError = t.getMessage() != null ? t.getMessage() : "Bind failed";
         }
         return refreshState();
@@ -346,10 +475,10 @@ public class ShizukuIntegrationManager {
         if (!state.permissionGranted) {
             throw new SecurityException("Shizuku permission is not granted for ChatAI.");
         }
-        if (boundService == null || !boundService.asBinder().pingBinder()) {
+        if (!isBoundServiceAlive()) {
             bindAndVerifySync();
         }
-        if (boundService == null || !boundService.asBinder().pingBinder()) {
+        if (!isBoundServiceAlive()) {
             throw new IllegalStateException("Shizuku UserService failed to bind.");
         }
         Bundle b = boundService.executeShell(command, workdir, timeoutSeconds);
@@ -371,6 +500,14 @@ public class ShizukuIntegrationManager {
             Shizuku.removeBinderDeadListener(binderDeadListener);
             Shizuku.removeRequestPermissionResultListener(permissionResultListener);
         } catch (Throwable ignored) {
+        }
+    }
+
+    private boolean isBoundServiceAlive() {
+        try {
+            return boundService != null && boundService.asBinder() != null && boundService.asBinder().pingBinder();
+        } catch (Throwable ignored) {
+            return false;
         }
     }
 

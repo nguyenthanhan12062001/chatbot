@@ -4,10 +4,12 @@ package com.chatai.an.domain.model;
  * Selects which terminal backend executes built-in shell/terminal actions:
  * - APP_TERMINAL: In-app sandboxed shell (/system/bin/sh) inside ChatAI's workspace
  * - TERMUX: External Termux app via Termux RUN_COMMAND API
+ * - SHIZUKU: Privileged ADB Shell (UID 2000) or Root (UID 0) via Shizuku UserService
  */
 public enum TerminalBackend {
     APP_TERMINAL("app_terminal", "App Terminal"),
-    TERMUX("termux", "Termux");
+    TERMUX("termux", "Termux"),
+    SHIZUKU("shizuku", "Shizuku");
 
     private final String id;
     private final String defaultLabel;
@@ -32,6 +34,9 @@ public enum TerminalBackend {
         String norm = value.trim().toUpperCase(java.util.Locale.ROOT);
         if ("TERMUX".equals(norm)) {
             return TERMUX;
+        }
+        if ("SHIZUKU".equals(norm) || "ADB".equals(norm) || "ADB_SHIZUKU".equals(norm)) {
+            return SHIZUKU;
         }
         if ("APP".equals(norm) || "APP_TERMINAL".equals(norm)) {
             return APP_TERMINAL;

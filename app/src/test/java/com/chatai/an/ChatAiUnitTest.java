@@ -7,6 +7,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import com.chatai.an.ai.agent.AgentEngine;
+import com.chatai.an.ai.context.CompatHistory;
 import com.chatai.an.ai.context.ContextManager;
 import com.chatai.an.ai.core.AiCore;
 import com.chatai.an.ai.memory.MemoryMergeService;
@@ -32,6 +33,7 @@ import com.chatai.an.domain.model.MessageRole;
 import com.chatai.an.domain.model.ModelPricingType;
 import com.chatai.an.domain.model.ModelProvider;
 import com.chatai.an.domain.model.ProtocolType;
+import com.chatai.an.domain.model.ToolCallRecord;
 import com.chatai.an.domain.model.ToolResult;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
@@ -230,6 +232,76 @@ public class ChatAiUnitTest {
         AgentEngine.AgentDirective plain = AgentEngine.parseDirective("Direct plain response");
         assertEquals("final_answer", plain.action);
         assertEquals("Direct plain response", plain.answer);
+    }
+
+    @Test
+    public void compatHistory_normalizesMultiProviderTurnsAndToolSummaries() {
+        List<ToolCallRecord> tools = Collections.singletonList(new ToolCallRecord(
+                "t1", "fs_read_file", "Workspace", ToolCallRecord.Status.COMPLETED,
+                "Read file", "{\"path\":\"build.gradle.kts\"}", "plugins { id(...) }", "", 10L, 12L
+        ));
+        List<Message> rawHistory = Arrays.asList(
+                new Message("m0", "s001", MessageRole.ASSISTANT,
+                        "<chatai_tool name=\"fs_list_dir\">{\"path\":\".\"}</chatai_tool>\nIntro from Gemini",
+                        "", "gemini-2.5-flash", "google", AccessType.PERSONAL_API, false, null, false,
+                        1L, 1L, Collections.emptyList(), tools, Collections.emptyList()),
+                new Message("m1", "s001", MessageRole.USER, "Explain Activity", "gemini-2.5-flash", false, 2L, 2L, Collections.emptyList()),
+                new Message("m2", "s001", MessageRole.USER, "And Fragment", "claude-sonnet", false, 3L, 3L, Collections.emptyList()),
+                new Message("m3", "s001", MessageRole.ASSISTANT, "Here is an answer\n<chatai_followups>[\"Next\"]</chatai_followups>",
+                        "", "claude-sonnet", "anthropic", AccessType.PERSONAL_API, false, null, false,
+                        4L, 4L, Collections.emptyList())
+        );
+
+        List<Message> forClaude = CompatHistory.normalizeForProvider(rawHistory, ProtocolType.ANTHROPIC_MESSAGES);
+        // Must start with USER, merge consecutive USER turns, strip tags, and summarize prior tool calls
+        assertEquals(MessageRole.USER, forClaude.get(0).getRole());
+        for (int i = 1; i < forClaude.size(); i++) {
+            assertFalse("Roles must alternate cleanly",
+                    forClaude.get(i).getRole() == forClaude.get(i - 1).getRole());
+        }
+        String joined = forClaude.toString();
+        assertFalse(joined.contains("<chatai_tool"));
+        assertFalse(joined.contains("<chatai_followups"));
+        assertTrue(forClaude.get(1).getContent().contains("fs_read_file"));
+        assertTrue(forClaude.get(2).getContent().contains("Explain Activity"));
+        assertTrue(forClaude.get(2).getContent().contains("And Fragment"));
+    }
+
+    @Test
+    public void aiCore_parsesNestedBracesAndToolCallAliasesAndStripsTags() {
+        String output = "Checking file...\n"
+                + "<chatai_tool name='fs_write_file'>{\"path\":\"Main.java\",\"content\":\"class A { void f() { } }\"}</chatai_tool>\n"
+                + "<tool_call>{\"name\":\"terminal_run\",\"arguments\":{\"command\":\"ls -la\"}}</tool_call>\n"
+                + "Done!";
+        List<AiCore.ToolInvocation> calls = AiCore.parseToolInvocations(output);
+        assertEquals(2, calls.size());
+        assertEquals("fs_write_file", calls.get(0).toolName);
+        assertEquals("class A { void f() { } }", calls.get(0).args.get("content").getAsString());
+        assertEquals("terminal_run", calls.get(1).toolName);
+        assertEquals("ls -la", calls.get(1).args.get("command").getAsString());
+        assertEquals("Checking file...\n\nDone!", AiCore.stripToolTags(output));
+    }
+
+    @Test
+    public void markdownRenderer_parsesLatexBlocksImagesAndCurrencySafely() {
+        String sample = "Intro with $5 price and $E = mc^2$ formula.\n"
+                + "$$\n\\frac{a}{b} + \\sqrt{x^2}\n$$\n"
+                + "![Architecture](https://example.com/arch.png)\n"
+                + "\\[\\alpha + \\beta = \\gamma\\]";
+        List<MarkdownRenderer.MarkdownSegment> segments = MarkdownRenderer.parseSegments(sample);
+        assertEquals(4, segments.size());
+        assertEquals(MarkdownRenderer.SegmentType.TEXT, segments.get(0).getType());
+        assertEquals(MarkdownRenderer.SegmentType.LATEX_BLOCK, segments.get(1).getType());
+        assertTrue(segments.get(1).getContent().contains("\\frac{a}{b}"));
+        assertEquals(MarkdownRenderer.SegmentType.IMAGE, segments.get(2).getType());
+        assertEquals("https://example.com/arch.png", segments.get(2).getContent());
+        assertEquals("Architecture", segments.get(2).getImageAlt());
+        assertEquals(MarkdownRenderer.SegmentType.LATEX_BLOCK, segments.get(3).getType());
+
+        String formatted = MarkdownRenderer.formatLatexPlainText("\\frac{a}{b} + \\sqrt{x} \\implies y");
+        assertTrue(formatted.contains("a/b"));
+        assertTrue(formatted.contains("√(x)"));
+        assertTrue(formatted.contains("⟹"));
     }
 
     private AiModel dummyModel(String id, AccessType accessType) {

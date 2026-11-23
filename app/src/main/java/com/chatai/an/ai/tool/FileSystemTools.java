@@ -127,7 +127,7 @@ public final class FileSystemTools {
             try {
                 String path = optStr(args, "path");
                 if (path.isEmpty()) return new ToolResult(DEF.getName(), false, "", "Missing path");
-                String content = optStr(args, "content");
+                String content = optRawStr(args, "content");
                 boolean append = args != null && args.has("append") && args.get("append").getAsBoolean();
                 String resolved = fm.writeFileText(path, content, append);
                 return new ToolResult(DEF.getName(), true, (append ? "Appended to " : "Wrote ") + resolved + " (" + content.length() + " chars)", "");
@@ -412,6 +412,12 @@ public final class FileSystemTools {
     private static String optStr(JsonObject args, String key) {
         return args != null && args.has(key) && args.get(key).isJsonPrimitive()
                 ? args.get(key).getAsString().trim()
+                : "";
+    }
+
+    private static String optRawStr(JsonObject args, String key) {
+        return args != null && args.has(key) && args.get(key).isJsonPrimitive()
+                ? args.get(key).getAsString()
                 : "";
     }
 

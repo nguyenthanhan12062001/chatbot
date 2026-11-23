@@ -5,10 +5,12 @@ import android.content.Context;
 import com.chatai.an.ai.agent.AgentEngine;
 import com.chatai.an.ai.context.ContextManager;
 import com.chatai.an.ai.core.AiCore;
+import com.chatai.an.ai.core.ChatSessionCoordinator;
 import com.chatai.an.ai.integration.IntegrationDiagnosticsManager;
 import com.chatai.an.ai.integration.download.DownloadToolManager;
 import com.chatai.an.ai.integration.files.WorkspaceFileManager;
 import com.chatai.an.ai.integration.net.InternetAccessManager;
+import com.chatai.an.ai.integration.adb.EmbeddedAdbManager;
 import com.chatai.an.ai.integration.shizuku.ShizukuIntegrationManager;
 import com.chatai.an.ai.integration.terminal.AppTerminalManager;
 import com.chatai.an.ai.integration.termux.TermuxIntegrationManager;
@@ -92,6 +94,7 @@ public class AppContainer {
     private final AppTerminalManager appTerminalManager;
     private final TermuxIntegrationManager termuxIntegrationManager;
     private final ShizukuIntegrationManager shizukuIntegrationManager;
+    private final EmbeddedAdbManager embeddedAdbManager;
     private final DownloadToolManager downloadToolManager;
     private final IntegrationDiagnosticsManager integrationDiagnosticsManager;
 
@@ -99,6 +102,7 @@ public class AppContainer {
     private final MemoryMergeService memoryMergeService;
     private final ConversationCompactor conversationCompactor;
     private final AgentEngine agentEngine;
+    private final ChatSessionCoordinator chatSessionCoordinator;
 
     public AppContainer(Context context) {
         Context appContext = context.getApplicationContext();
@@ -140,6 +144,7 @@ public class AppContainer {
         this.appTerminalManager = new AppTerminalManager(appContext, workspaceFileManager);
         this.termuxIntegrationManager = new TermuxIntegrationManager(appContext);
         this.shizukuIntegrationManager = new ShizukuIntegrationManager(appContext);
+        this.embeddedAdbManager = new EmbeddedAdbManager(appContext);
         this.workspaceFileManager.setShizukuManager(this.shizukuIntegrationManager);
         this.downloadToolManager = new DownloadToolManager(appContext, okHttpClient, workspaceFileManager, settingsRepository);
 
@@ -152,13 +157,20 @@ public class AppContainer {
         this.toolRegistry.register(new RememberTool(memoryRepository));
         this.toolRegistry.register(new RecallTool(memoryRepository));
         FileSystemTools.registerAll(this.toolRegistry, this.workspaceFileManager);
-        TerminalTools.registerAll(this.toolRegistry, this.appTerminalManager, this.termuxIntegrationManager, this.settingsRepository);
+        TerminalTools.registerAll(
+                this.toolRegistry,
+                this.appTerminalManager,
+                this.termuxIntegrationManager,
+                this.shizukuIntegrationManager,
+                this.settingsRepository
+        );
         TermuxTools.registerAll(this.toolRegistry, this.termuxIntegrationManager);
         AdbShizukuTools.registerAll(this.toolRegistry, this.shizukuIntegrationManager);
         InternetTools.registerAll(this.toolRegistry, this.okHttpClient, this.settingsRepository);
         DownloadTools.registerAll(this.toolRegistry, this.downloadToolManager);
 
         this.toolExecutor = new ToolExecutor(this.toolRegistry, this.settingsRepository, this.workspaceFileManager, this.executors);
+        this.toolExecutor.setShizukuManager(this.shizukuIntegrationManager);
         this.aiCore.setToolRegistry(this.toolRegistry);
         this.aiCore.setToolExecutor(this.toolExecutor);
 
@@ -187,6 +199,23 @@ public class AppContainer {
                 memoryRepository,
                 agentRepository,
                 settingsRepository,
+                executors
+        );
+
+        this.chatSessionCoordinator = new ChatSessionCoordinator(
+                conversationRepository,
+                messageRepository,
+                modelRepository,
+                themeRepository,
+                settingsRepository,
+                memoryRepository,
+                memoryRetrievalEngine,
+                conversationCompactor,
+                contextManager,
+                aiCore,
+                toolRegistry,
+                toolExecutor,
+                workspaceFileManager,
                 executors
         );
 
@@ -294,6 +323,10 @@ public class AppContainer {
         return shizukuIntegrationManager;
     }
 
+    public EmbeddedAdbManager getEmbeddedAdbManager() {
+        return embeddedAdbManager;
+    }
+
     public DownloadToolManager getDownloadToolManager() {
         return downloadToolManager;
     }
@@ -316,5 +349,9 @@ public class AppContainer {
 
     public AgentEngine getAgentEngine() {
         return agentEngine;
+    }
+
+    public ChatSessionCoordinator getChatSessionCoordinator() {
+        return chatSessionCoordinator;
     }
 }

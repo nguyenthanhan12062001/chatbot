@@ -70,6 +70,22 @@ public class MessageEntity {
     @ColumnInfo(name = "updated_at")
     public long updatedAt;
 
+    @ColumnInfo(name = "tool_records_json")
+    @NonNull
+    public String toolRecordsJson;
+
+    @ColumnInfo(name = "follow_ups_json")
+    @NonNull
+    public String followUpsJson;
+
+    @ColumnInfo(name = "timeline_json")
+    @NonNull
+    public String timelineJson;
+
+    @ColumnInfo(name = "sources_json")
+    @NonNull
+    public String sourcesJson;
+
     @Ignore
     public MessageEntity(
             @NonNull String id,
@@ -81,9 +97,10 @@ public class MessageEntity {
             long createdAt,
             long updatedAt
     ) {
-        this(id, conversationId, role, content, "", modelId, "", "", deepThinkingEnabled, 0, 0, 0, false, createdAt, updatedAt);
+        this(id, conversationId, role, content, "", modelId, "", "", deepThinkingEnabled, 0, 0, 0, false, createdAt, updatedAt, "[]", "[]", "[]", "[]");
     }
 
+    @Ignore
     public MessageEntity(
             @NonNull String id,
             @NonNull String conversationId,
@@ -101,6 +118,53 @@ public class MessageEntity {
             long createdAt,
             long updatedAt
     ) {
+        this(id, conversationId, role, content, thinkingContent, modelId, providerId, accessType, deepThinkingEnabled, promptTokens, completionTokens, totalTokens, isError, createdAt, updatedAt, "[]", "[]", "[]", "[]");
+    }
+
+    @Ignore
+    public MessageEntity(
+            @NonNull String id,
+            @NonNull String conversationId,
+            @NonNull String role,
+            @NonNull String content,
+            @NonNull String thinkingContent,
+            @NonNull String modelId,
+            @NonNull String providerId,
+            @NonNull String accessType,
+            boolean deepThinkingEnabled,
+            int promptTokens,
+            int completionTokens,
+            int totalTokens,
+            boolean isError,
+            long createdAt,
+            long updatedAt,
+            @NonNull String toolRecordsJson,
+            @NonNull String followUpsJson
+    ) {
+        this(id, conversationId, role, content, thinkingContent, modelId, providerId, accessType, deepThinkingEnabled, promptTokens, completionTokens, totalTokens, isError, createdAt, updatedAt, toolRecordsJson, followUpsJson, "[]", "[]");
+    }
+
+    public MessageEntity(
+            @NonNull String id,
+            @NonNull String conversationId,
+            @NonNull String role,
+            @NonNull String content,
+            @NonNull String thinkingContent,
+            @NonNull String modelId,
+            @NonNull String providerId,
+            @NonNull String accessType,
+            boolean deepThinkingEnabled,
+            int promptTokens,
+            int completionTokens,
+            int totalTokens,
+            boolean isError,
+            long createdAt,
+            long updatedAt,
+            @NonNull String toolRecordsJson,
+            @NonNull String followUpsJson,
+            @NonNull String timelineJson,
+            @NonNull String sourcesJson
+    ) {
         this.id = id;
         this.conversationId = conversationId;
         this.role = role;
@@ -116,5 +180,9 @@ public class MessageEntity {
         this.isError = isError;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
+        this.toolRecordsJson = toolRecordsJson;
+        this.followUpsJson = followUpsJson;
+        this.timelineJson = timelineJson;
+        this.sourcesJson = sourcesJson;
     }
 }

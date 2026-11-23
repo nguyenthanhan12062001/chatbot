@@ -28,22 +28,22 @@ import java.util.UUID;
 public class ContextManager {
 
     private static final String BASE_CHAT_AGENT_PROMPT =
-            "Your official name and personal identity is AnAI. You are a helpful, accurate, and capable AI assistant running on Android. "
+            "Your official name and personal identity is AnAI (Chat Mode - AndroidHarness Architecture). You are a helpful, accurate, and fast conversational assistant running on Android. "
                     + "Whenever the user asks for your name, who you are, or your identity, you must always state that your name is AnAI (adapt your tone contextually, e.g., friendly, polite, or playful if asked cutely). "
                     + "Never claim model names (such as GPT, Gemini, Claude, Llama) or provider names (such as OpenAI, Anthropic, Google) as your personal identity—keep your identity as AnAI completely separate from any technical underlying model or provider specs. "
                     + "Answer directly using the user's language when clear, and use Markdown cleanly for tables, blockquotes, links, and code blocks. "
-                    + "You have FULL ACCESS to the In-App Terminal (`terminal_run`, `terminal_script`), Termux (`termux_run`, `termux_script`), and Workspace Files (`fs_read_file`, `fs_write_file`, `fs_edit_file`, `fs_list_dir`). "
-                    + "When the user asks you to write code, program, create applications, run shell commands, test scripts, or execute operations, you MUST actively use `terminal_run`, `terminal_script`, and file tools to perform the programming tasks. Never claim you lack terminal access — you are fully equipped for coding and shell execution!";
+                    + "In Chat mode, keep interactions conversational, research-focused, and read-only: you may inspect workspace files (`fs_read_file`, `fs_list_dir`, `fs_search_files`, `fs_grep`), search or fetch web pages, recall/remember user facts, read attachments, and query read-only device/ADB status (`device_info`, `adb_device_manager`, `adb_package_manager` inspection). "
+                    + "If the user asks you to edit workspace files, install packages, run builds/scripts, or execute modifying shell/Shizuku commands, explain what you plan to change and advise switching to **Code** mode (or tapping Continue in Code / `/code`) to run autonomous workspace & terminal tools.";
 
     private static final String BASE_CODING_AGENT_PROMPT =
-            "Your official name and personal identity is AnAI (Coding Agent Mode - AndroidHarness Architecture). "
-                    + "You are an autonomous, expert software engineering agent capable of designing, writing, editing, building, and testing code. "
+            "Your official name and personal identity is AnAI (Code Agent Mode - AndroidHarness Architecture). "
+                    + "You are an autonomous, expert software engineering and device-automation agent capable of designing, writing, editing, building, and testing code as well as running terminal/Termux/Shizuku tools. "
                     + "Whenever the user asks for your name or identity, state your name is AnAI. "
                     + "Follow the rigorous 4-step engineering loop:\n"
                     + "1. EXPLORE: Inspect directory layouts (`fs_list_dir`), search symbols (`fs_grep`, `fs_search_files`), and read target files (`fs_read_file`).\n"
                     + "2. PLAN: Formulate a precise engineering plan to implement features or fix bugs.\n"
-                    + "3. EXECUTE: Apply surgical modifications (`fs_edit_file`, `fs_write_file`) and execute builds, tests, or scripts using the In-App Terminal (`terminal_run`, `terminal_script`) freely without confirmation.\n"
-                    + "4. VERIFY & SELF-CORRECT: If a build error or test failure occurs, analyze the stderr observation, fix the issue in the code, and re-verify until success.\n"
+                    + "3. EXECUTE: Apply surgical modifications (`fs_edit_file`, `fs_write_file`, `fs_mkdir`) and execute builds, tests, or scripts using the In-App Terminal (`terminal_run`, `terminal_script`), Termux (`termux_run`), or Shizuku (`adb_shell`, `adb_package_manager`, `adb_system_settings`, `adb_activity_manager`, `adb_device_manager`, `adb_logcat`). Notice that privileged or mutating actions will pause cleanly for inline user confirmation.\n"
+                    + "4. VERIFY & SELF-CORRECT: If a build error or test failure occurs, analyze stderr/tool output, fix the issue in code, and re-verify until success.\n"
                     + "Never give up or fabricate success. Always report real command outputs and test results.";
 
     private static final String MEMORY_TOOLS_PROMPT =
@@ -102,9 +102,9 @@ public class ContextManager {
             String activeWorkspacePath,
             List<ToolDefinition> enabledTools
     ) {
-        boolean toolsUnsupportedByModel = model != null
+        boolean nativeToolsUnsupported = model != null
                 && model.getCapabilityStatus(ModelCapability.TOOL_CALLING) == CapabilityStatus.UNSUPPORTED;
-        List<ToolDefinition> effectiveTools = (!toolsUnsupportedByModel && enabledTools != null)
+        List<ToolDefinition> effectiveTools = enabledTools != null
                 ? enabledTools
                 : Collections.emptyList();
 
@@ -117,7 +117,7 @@ public class ContextManager {
                 agentMode,
                 activeWorkspacePath,
                 effectiveTools,
-                toolsUnsupportedByModel
+                nativeToolsUnsupported
         );
 
         int maxWindow = model != null ? model.getContextWindowTokens() : 32000;
@@ -217,17 +217,27 @@ public class ContextManager {
                     .append(conversation.getCompactionSummary());
         }
 
-        if (toolsUnsupportedByModel) {
-            sb.append("\n\nNote: The currently selected model reports Tool Calling as UNSUPPORTED. Answer using conversation context only and inform the user if real-time tool execution is needed.");
-        } else if (enabledTools != null && !enabledTools.isEmpty()) {
-            sb.append("\n\nEnabled Tools (You have direct access to execute these tools. Call via native tool calls OR <chatai_tool name=\"tool_name\">{\"param\":\"value\"}</chatai_tool> tags before answering; the app executes them and feeds results back to you):\n");
+        if (enabledTools != null && !enabledTools.isEmpty()) {
+            if (toolsUnsupportedByModel) {
+                sb.append("\n\nEnabled Tools (Native schema calling is disabled for this model; invoke tools by emitting `<chatai_tool name=\"tool_name\">{\"param\":\"value\"}</chatai_tool>` tags directly and the app runtime will execute them and return real observations):\n");
+            } else {
+                sb.append("\n\nEnabled Tools (Call via native tool calls OR `<chatai_tool name=\"tool_name\">{\"param\":\"value\"}</chatai_tool>` tags before answering; the app executes them and feeds real observations back to you):\n");
+            }
             sb.append(ToolRegistry.formatCatalogSummary(enabledTools));
-            sb.append("\nExample tool invocation for executing terminal commands:\n");
-            sb.append("<chatai_tool name=\"terminal_run\">{\"command\":\"ls -la\"}</chatai_tool>\n");
-            sb.append("When the user asks you to write code, program, or run commands, ALWAYS use terminal_run or terminal_script. Only invoke tools when genuinely needed. Wait for real tool output before stating results.");
+            if (agentMode == AgentMode.CODING) {
+                sb.append("\nExamples:\n")
+                        .append("<chatai_tool name=\"fs_list_dir\">{\"path\":\".\"}</chatai_tool>\n")
+                        .append("<chatai_tool name=\"terminal_run\">{\"command\":\"ls -la\"}</chatai_tool>");
+            } else {
+                sb.append("\nExample: <chatai_tool name=\"fs_list_dir\">{\"path\":\".\"}</chatai_tool>");
+            }
+            sb.append("\nOnly invoke tools when genuinely needed. Wait for real tool output before stating results.");
         } else if (includeMemoryToolInstructions) {
             sb.append(MEMORY_TOOLS_PROMPT);
         }
+
+        sb.append("\n\nOptional Follow-Up Chips: At the very end of a substantial answer, you may optionally append 2-3 brief next-step prompts for the user as:\n")
+                .append("<chatai_followups>[\"Short next prompt 1\",\"Short next prompt 2\"]</chatai_followups>");
 
         return sb.toString();
     }

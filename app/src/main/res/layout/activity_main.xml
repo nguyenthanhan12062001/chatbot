@@ -110,6 +110,152 @@
                 android:src="@drawable/ic_add" />
         </LinearLayout>
 
+        <!-- AndroidHarness Compact Mode, Workspace, Shizuku & Context Strip -->
+        <HorizontalScrollView
+            android:id="@+id/harness_header_strip_scroll"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:clipToPadding="false"
+            android:paddingHorizontal="10dp"
+            android:paddingBottom="6dp"
+            android:scrollbars="none">
+
+            <LinearLayout
+                android:id="@+id/harness_header_strip"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <!-- Segmented Chat / Code Pill -->
+                <LinearLayout
+                    android:id="@+id/harness_mode_toggle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:padding="2dp">
+
+                    <TextView
+                        android:id="@+id/btn_mode_chat"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:gravity="center"
+                        android:minHeight="32dp"
+                        android:paddingHorizontal="12dp"
+                        android:paddingVertical="5dp"
+                        android:text="@string/mode_chat_pill"
+                        android:textSize="12sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/btn_mode_code"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:gravity="center"
+                        android:minHeight="32dp"
+                        android:paddingHorizontal="12dp"
+                        android:paddingVertical="5dp"
+                        android:text="@string/mode_code_pill"
+                        android:textSize="12sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <!-- Workspace Chip -->
+                <LinearLayout
+                    android:id="@+id/btn_workspace_chip"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="6dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:minHeight="34dp"
+                    android:orientation="horizontal"
+                    android:paddingHorizontal="10dp"
+                    android:paddingVertical="5dp">
+
+                    <ImageView
+                        android:id="@+id/iv_workspace_chip"
+                        android:layout_width="14dp"
+                        android:layout_height="14dp"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_folder" />
+
+                    <TextView
+                        android:id="@+id/tv_workspace_chip"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="5dp"
+                        android:ellipsize="end"
+                        android:maxLines="1"
+                        android:maxWidth="115dp"
+                        android:text="@string/workspace_chip_default"
+                        android:textSize="11.5sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <!-- Shizuku Quick Status & Permission Pill -->
+                <LinearLayout
+                    android:id="@+id/btn_shizuku_pill"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="6dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:minHeight="34dp"
+                    android:orientation="horizontal"
+                    android:paddingHorizontal="10dp"
+                    android:paddingVertical="5dp">
+
+                    <View
+                        android:id="@+id/view_shizuku_dot"
+                        android:layout_width="7dp"
+                        android:layout_height="7dp"
+                        android:layout_marginEnd="6dp" />
+
+                    <TextView
+                        android:id="@+id/tv_shizuku_pill"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:ellipsize="end"
+                        android:maxLines="1"
+                        android:text="@string/shizuku_badge_off"
+                        android:textSize="11.5sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <!-- Context Window Meter Pill -->
+                <LinearLayout
+                    android:id="@+id/btn_context_meter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="6dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:minHeight="34dp"
+                    android:orientation="horizontal"
+                    android:paddingHorizontal="10dp"
+                    android:paddingVertical="5dp">
+
+                    <TextView
+                        android:id="@+id/tv_context_meter"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="monospace"
+                        android:textSize="11sp"
+                        android:textStyle="bold"
+                        tools:text="Ctx 14%" />
+                </LinearLayout>
+            </LinearLayout>
+        </HorizontalScrollView>
+
         <!-- Conversation Area -->
         <FrameLayout
             android:id="@+id/conversation_area"
@@ -291,6 +437,19 @@
                 android:paddingTop="8dp"
                 android:paddingBottom="14dp"
                 android:visibility="gone" />
+
+            <!-- Floating Scroll-to-Bottom Button -->
+            <ImageButton
+                android:id="@+id/btn_scroll_to_bottom"
+                android:layout_width="42dp"
+                android:layout_height="42dp"
+                android:layout_gravity="bottom|end"
+                android:layout_margin="14dp"
+                android:contentDescription="@string/cd_scroll_to_bottom"
+                android:elevation="4dp"
+                android:padding="10dp"
+                android:src="@drawable/ic_chevron_down"
+                android:visibility="gone" />
         </FrameLayout>
 
         <!-- Compact Live AI Execution Status Pill -->
@@ -324,6 +483,67 @@
                 android:textStyle="bold"
                 tools:text="Streaming response…" />
         </LinearLayout>
+
+        <!-- Follow-Up Queue Tray (visible when user queues messages while AI is busy) -->
+        <LinearLayout
+            android:id="@+id/ll_follow_up_queue_container"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="12dp"
+            android:layout_marginBottom="4dp"
+            android:orientation="vertical"
+            android:paddingHorizontal="10dp"
+            android:paddingVertical="6dp"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/tv_queue_header"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:textSize="11.5sp"
+                    android:textStyle="bold"
+                    tools:text="Queued follow-ups (1)" />
+
+                <TextView
+                    android:id="@+id/btn_queue_clear"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:paddingHorizontal="8dp"
+                    android:paddingVertical="3dp"
+                    android:text="@string/action_delete"
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/ll_follow_up_queue_items"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:orientation="vertical" />
+        </LinearLayout>
+
+        <!-- Slash Command Autocomplete Popup -->
+        <LinearLayout
+            android:id="@+id/ll_slash_command_popup"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="12dp"
+            android:layout_marginBottom="4dp"
+            android:orientation="vertical"
+            android:paddingHorizontal="8dp"
+            android:paddingVertical="6dp"
+            android:visibility="gone" />
 
         <!-- Input Composer Area -->
         <LinearLayout

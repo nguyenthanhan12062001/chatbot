@@ -27,6 +27,8 @@ import com.chatai.an.R;
 import com.chatai.an.ai.integration.download.DownloadToolManager;
 import com.chatai.an.ai.integration.files.WorkspaceFileManager;
 import com.chatai.an.ai.integration.net.InternetAccessManager;
+import com.chatai.an.ai.integration.adb.EmbeddedAdbManager;
+import com.chatai.an.ai.integration.adb.EmbeddedAdbForegroundService;
 import com.chatai.an.ai.integration.shizuku.ShizukuIntegrationManager;
 import com.chatai.an.ai.integration.terminal.AppTerminalManager;
 import com.chatai.an.ai.integration.termux.TermuxIntegrationManager;
@@ -95,6 +97,7 @@ public class IntegrationsHubActivity extends AppCompatActivity {
         setupTerminalActions();
         setupTermuxActions();
         setupShizukuActions();
+        setupBackgroundActions();
         setupFileActions();
         setupNetAndDownloads();
         setupToolMatrix();
@@ -140,6 +143,23 @@ public class IntegrationsHubActivity extends AppCompatActivity {
         binding.tvShizukuStatusDetail.setText("Status: " + sState.status.name() + " • " + sState.detail + " • UID: " + sState.serviceUid + " (" + sState.privilegeLevel.getLabel() + ")");
         binding.switchShizukuFallback.setChecked(appContainer.getSettingsRepository().getSettingsSnapshot().isAllowShizukuFileFallback());
 
+        // Background Execution & Battery Exemption State
+        android.os.PowerManager pm = (android.os.PowerManager) getSystemService(Context.POWER_SERVICE);
+        boolean ignoringBattery = pm != null && pm.isIgnoringBatteryOptimizations(getPackageName());
+        binding.tvBackgroundStatusDetail.setText(ignoringBattery 
+            ? "Background Execution: Unrestricted (Battery Optimization Ignored)" 
+            : "Background Execution: Battery Optimized (App may be killed in background)");
+        binding.btnBackgroundRequest.setText(ignoringBattery ? "Exempted from Battery Saver" : "Request Background Exemption");
+        if (palette != null) {
+            int stroke = ThemeApplier.dpToPxInt(this, 1f);
+            binding.btnBackgroundRequest.setBackground(GradientDrawableFactory.createPill(
+                    ignoringBattery ? palette.getSurfaceVariantColor() : palette.getPrimaryColor(),
+                    ignoringBattery ? palette.getBorderColor() : palette.getPrimaryColor(),
+                    stroke
+            ));
+            binding.btnBackgroundRequest.setTextColor(ignoringBattery ? palette.getTextPrimaryColor() : palette.getOnPrimaryColor());
+        }
+
         // File Workspace Path & SAF Folders
         WorkspaceFileManager wfm = appContainer.getWorkspaceFileManager();
         binding.tvFilesWorkspacePath.setText("Active Workspace: " + wfm.getActiveWorkspacePath());
@@ -179,6 +199,10 @@ public class IntegrationsHubActivity extends AppCompatActivity {
             appContainer.getSettingsRepository().setPreferredTerminalBackend(TerminalBackend.TERMUX);
             bindDynamicStates();
         });
+        binding.btnHubBackendShizuku.setOnClickListener(v -> {
+            appContainer.getSettingsRepository().setPreferredTerminalBackend(TerminalBackend.SHIZUKU);
+            bindDynamicStates();
+        });
         binding.btnHubOpenTerminal.setOnClickListener(v ->
                 startActivity(new Intent(this, TerminalActivity.class))
         );
@@ -188,17 +212,16 @@ public class IntegrationsHubActivity extends AppCompatActivity {
         if (palette == null) return;
         int stroke = ThemeApplier.dpToPxInt(this, 1f);
         int border = palette.getBorderColor();
-        boolean isApp = activeBackend == TerminalBackend.APP_TERMINAL;
 
-        binding.btnHubBackendApp.setBackground(isApp
-                ? GradientDrawableFactory.createLinearGradient(palette, 999f)
-                : GradientDrawableFactory.createPill(palette.getSurfaceVariantColor(), border, stroke));
-        binding.btnHubBackendApp.setTextColor(isApp ? palette.getOnPrimaryColor() : palette.getTextPrimaryColor());
-
-        binding.btnHubBackendTermux.setBackground(!isApp
-                ? GradientDrawableFactory.createLinearGradient(palette, 999f)
-                : GradientDrawableFactory.createPill(palette.getSurfaceVariantColor(), border, stroke));
-        binding.btnHubBackendTermux.setTextColor(!isApp ? palette.getOnPrimaryColor() : palette.getTextPrimaryColor());
+        TextView[] btns = {binding.btnHubBackendApp, binding.btnHubBackendTermux, binding.btnHubBackendShizuku};
+        TerminalBackend[] backends = {TerminalBackend.APP_TERMINAL, TerminalBackend.TERMUX, TerminalBackend.SHIZUKU};
+        for (int i = 0; i < btns.length; i++) {
+            boolean active = activeBackend == backends[i];
+            btns[i].setBackground(active
+                    ? GradientDrawableFactory.createLinearGradient(palette, 999f)
+                    : GradientDrawableFactory.createPill(palette.getSurfaceVariantColor(), border, stroke));
+            btns[i].setTextColor(active ? palette.getOnPrimaryColor() : palette.getTextPrimaryColor());
+        }
 
         binding.btnHubOpenTerminal.setBackground(GradientDrawableFactory.createPill(
                 ThemeApplier.blendWithAlpha(palette.getPrimaryColor(), 26),
@@ -236,10 +259,32 @@ public class IntegrationsHubActivity extends AppCompatActivity {
 
     private void setupShizukuActions() {
         binding.btnShizukuPerm.setOnClickListener(v -> {
-            boolean requested = appContainer.getShizukuIntegrationManager().requestPermission();
-            Toast.makeText(this, requested ? "Requested Shizuku permission. Check Shizuku app prompt." : "Shizuku not running or unavailable.", Toast.LENGTH_SHORT).show();
+            ShizukuIntegrationManager shizuku = appContainer.getShizukuIntegrationManager();
+            ShizukuIntegrationManager.QuickActionOutcome outcome = shizuku.requestOrConnect(this);
+            if (outcome == ShizukuIntegrationManager.QuickActionOutcome.SHOW_RATIONALE_NEEDED) {
+                new MaterialAlertDialogBuilder(this)
+                        .setTitle(R.string.shizuku_rationale_title)
+                        .setMessage(R.string.shizuku_rationale_message)
+                        .setNegativeButton(R.string.shizuku_open_manager, (d, w) -> shizuku.openShizukuApp(this))
+                        .setPositiveButton(R.string.hub_shizuku_perm, (d, w) -> shizuku.requestPermission())
+                        .show();
+            } else if (outcome == ShizukuIntegrationManager.QuickActionOutcome.PERMISSION_REQUESTED) {
+                Toast.makeText(this, "Requested Shizuku permission. Approve in prompt.", Toast.LENGTH_SHORT).show();
+            } else if (outcome == ShizukuIntegrationManager.QuickActionOutcome.OPENED_SHIZUKU_APP) {
+                Toast.makeText(this, "Open Shizuku and start its service first.", Toast.LENGTH_SHORT).show();
+            } else if (outcome == ShizukuIntegrationManager.QuickActionOutcome.ALREADY_ACTIVE) {
+                Toast.makeText(this, "Shizuku already active.", Toast.LENGTH_SHORT).show();
+            } else if (outcome == ShizukuIntegrationManager.QuickActionOutcome.BIND_INITIATED) {
+                Toast.makeText(this, "Connecting Shizuku UserService…", Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(this, "Shizuku request failed.", Toast.LENGTH_SHORT).show();
+            }
             refreshAllStates();
         });
+
+        binding.btnShizukuOpen.setOnClickListener(v ->
+                appContainer.getShizukuIntegrationManager().openShizukuApp(this)
+        );
 
         binding.btnShizukuBind.setOnClickListener(v -> AppExecutors.getInstance().worker().execute(() -> {
             ShizukuIntegrationManager.ShizukuState st = appContainer.getShizukuIntegrationManager().bindAndVerifySync();
@@ -271,6 +316,86 @@ public class IntegrationsHubActivity extends AppCompatActivity {
         binding.switchShizukuFallback.setOnCheckedChangeListener((btn, checked) -> {
             if (btn.isPressed()) {
                 appContainer.getSettingsRepository().setAllowShizukuFileFallback(checked);
+            }
+        });
+
+        binding.btnEmbeddedAdbPair.setOnClickListener(v -> {
+            LinearLayout layout = new LinearLayout(this);
+            layout.setOrientation(LinearLayout.VERTICAL);
+            int pad = ThemeApplier.dpToPxInt(this, 16f);
+            layout.setPadding(pad, pad / 2, pad, pad / 2);
+
+            EditText ipInput = new EditText(this);
+            ipInput.setHint(R.string.adb_pair_ip_hint);
+            ipInput.setText("127.0.0.1");
+            layout.addView(ipInput);
+
+            EditText portInput = new EditText(this);
+            portInput.setHint(R.string.adb_pair_port_hint);
+            portInput.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
+            layout.addView(portInput);
+
+            EditText codeInput = new EditText(this);
+            codeInput.setHint(R.string.adb_pair_code_hint);
+            codeInput.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
+            layout.addView(codeInput);
+
+            new MaterialAlertDialogBuilder(this)
+                    .setTitle(R.string.dialog_adb_pair_title)
+                    .setMessage(R.string.dialog_adb_pair_message)
+                    .setView(layout)
+                    .setPositiveButton("Pair", (d, w) -> {
+                        String ip = ipInput.getText().toString().trim();
+                        String portStr = portInput.getText().toString().trim();
+                        String code = codeInput.getText().toString().trim();
+                        if (ip.isEmpty() || portStr.isEmpty() || code.length() != 6) {
+                            Toast.makeText(this, "Please enter valid IP, port, and 6-digit code.", Toast.LENGTH_LONG).show();
+                            return;
+                        }
+                        int port;
+                        try {
+                            port = Integer.parseInt(portStr);
+                        } catch (Exception e) {
+                            Toast.makeText(this, "Invalid port number.", Toast.LENGTH_SHORT).show();
+                            return;
+                        }
+                        AppExecutors.getInstance().worker().execute(() -> {
+                            EmbeddedAdbManager.AdbPairingResult res = appContainer.getEmbeddedAdbManager().pairWithCode(ip, port, code);
+                            AppExecutors.getInstance().postToMain(() -> {
+                                Toast.makeText(this, res.message, Toast.LENGTH_LONG).show();
+                                if (res.success) {
+                                    try {
+                                        Intent fgsIntent = new Intent(this, EmbeddedAdbForegroundService.class);
+                                        ContextCompat.startForegroundService(this, fgsIntent);
+                                    } catch (Exception ignored) {}
+                                }
+                                refreshAllStates();
+                            });
+                        });
+                    })
+                    .setNegativeButton(android.R.string.cancel, null)
+                    .show();
+        });
+    }
+
+    private void setupBackgroundActions() {
+        binding.btnBackgroundRequest.setOnClickListener(v -> {
+            android.os.PowerManager pm = (android.os.PowerManager) getSystemService(Context.POWER_SERVICE);
+            if (pm != null && !pm.isIgnoringBatteryOptimizations(getPackageName())) {
+                try {
+                    Intent intent = new Intent(android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS);
+                    intent.setData(Uri.parse("package:" + getPackageName()));
+                    startActivity(intent);
+                } catch (Exception e) {
+                    try {
+                        Intent intent = new Intent(android.provider.Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS);
+                        startActivity(intent);
+                    } catch (Exception ex) {
+                        Toast.makeText(this, "Unable to open battery optimization settings.", Toast.LENGTH_SHORT).show();
+                    }
+                }
+            } else {
+                Toast.makeText(this, "ChatAI is already exempted from battery optimizations.", Toast.LENGTH_SHORT).show();
             }
         });
     }
@@ -523,7 +648,7 @@ public class IntegrationsHubActivity extends AppCompatActivity {
 
         TextView[] buttons = {
                 binding.btnTermuxPerm, binding.btnTermuxTest, binding.btnTermuxCopy,
-                binding.btnShizukuPerm, binding.btnShizukuBind, binding.btnShizukuTest,
+                binding.btnShizukuPerm, binding.btnShizukuBind, binding.btnShizukuTest, binding.btnShizukuOpen,
                 binding.btnFilesGrantSaf, binding.btnFilesSetWorkspace,
                 binding.btnNetProbe, binding.btnDownloadsTest
         };

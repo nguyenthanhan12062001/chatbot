@@ -18,7 +18,10 @@ import com.chatai.an.domain.model.MessageRole;
 import com.chatai.an.domain.model.ModelProvider;
 import com.chatai.an.domain.model.ProtocolType;
 import com.chatai.an.domain.model.ProviderConfig;
+import com.chatai.an.domain.model.SourceItem;
+import com.chatai.an.domain.model.TimelineEntry;
 import com.chatai.an.domain.model.TokenUsage;
+import com.chatai.an.domain.model.ToolCallRecord;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
@@ -32,6 +35,10 @@ public final class EntityMapper {
     private static final Gson GSON = new Gson();
     private static final Type MAP_STRING_TYPE = new TypeToken<Map<String, String>>() {}.getType();
     private static final Type STEP_LIST_TYPE = new TypeToken<List<AgentStep>>() {}.getType();
+    private static final Type TOOL_RECORD_LIST_TYPE = new TypeToken<List<ToolCallRecord>>() {}.getType();
+    private static final Type STRING_LIST_TYPE = new TypeToken<List<String>>() {}.getType();
+    private static final Type TIMELINE_LIST_TYPE = new TypeToken<List<TimelineEntry>>() {}.getType();
+    private static final Type SOURCE_LIST_TYPE = new TypeToken<List<SourceItem>>() {}.getType();
 
     private EntityMapper() {
     }
@@ -118,6 +125,10 @@ public final class EntityMapper {
                 attachments.add(toDomain(attachmentEntity));
             }
         }
+        List<ToolCallRecord> toolRecords = parseToolRecords(entity.toolRecordsJson);
+        List<String> followUps = parseStringList(entity.followUpsJson);
+        List<TimelineEntry> timeline = parseTimelineEntries(entity.timelineJson);
+        List<SourceItem> sources = parseSources(entity.sourcesJson);
         return new Message(
                 entity.id,
                 entity.conversationId,
@@ -132,8 +143,92 @@ public final class EntityMapper {
                 entity.isError,
                 entity.createdAt,
                 entity.updatedAt,
-                attachments
+                attachments,
+                toolRecords,
+                followUps,
+                timeline,
+                sources
         );
+    }
+
+    public static String toToolRecordsJson(List<ToolCallRecord> records) {
+        if (records == null || records.isEmpty()) return "[]";
+        try {
+            String json = GSON.toJson(records);
+            return json != null ? json : "[]";
+        } catch (Exception ignored) {
+            return "[]";
+        }
+    }
+
+    public static String toStringListJson(List<String> list) {
+        if (list == null || list.isEmpty()) return "[]";
+        try {
+            String json = GSON.toJson(list);
+            return json != null ? json : "[]";
+        } catch (Exception ignored) {
+            return "[]";
+        }
+    }
+
+    public static String toTimelineJson(List<TimelineEntry> entries) {
+        if (entries == null || entries.isEmpty()) return "[]";
+        try {
+            String json = GSON.toJson(entries);
+            return json != null ? json : "[]";
+        } catch (Exception ignored) {
+            return "[]";
+        }
+    }
+
+    public static String toSourcesJson(List<SourceItem> sources) {
+        if (sources == null || sources.isEmpty()) return "[]";
+        try {
+            String json = GSON.toJson(sources);
+            return json != null ? json : "[]";
+        } catch (Exception ignored) {
+            return "[]";
+        }
+    }
+
+    private static List<ToolCallRecord> parseToolRecords(String json) {
+        if (json == null || json.isEmpty() || "[]".equals(json)) return Collections.emptyList();
+        try {
+            List<ToolCallRecord> parsed = GSON.fromJson(json, TOOL_RECORD_LIST_TYPE);
+            return parsed != null ? parsed : Collections.emptyList();
+        } catch (Exception ignored) {
+            return Collections.emptyList();
+        }
+    }
+
+    private static List<String> parseStringList(String json) {
+        if (json == null || json.isEmpty() || "[]".equals(json)) return Collections.emptyList();
+        try {
+            List<String> parsed = GSON.fromJson(json, STRING_LIST_TYPE);
+            return parsed != null ? parsed : Collections.emptyList();
+        } catch (Exception ignored) {
+            return Collections.emptyList();
+        }
+    }
+
+    private static List<TimelineEntry> parseTimelineEntries(String json) {
+        if (json == null || json.isEmpty() || "[]".equals(json)) return Collections.emptyList();
+        try {
+            List<TimelineEntry> parsed = GSON.fromJson(json, TIMELINE_LIST_TYPE);
+            return parsed != null ? parsed : Collections.emptyList();
+        } catch (Exception ignored) {
+            return Collections.emptyList();
+        }
+    }
+
+    private static List<SourceItem> parseSources(String json) {
+        if (json == null || json.isEmpty() || "[]".equals(json)) return Collections.emptyList();
+        try {
+            List<SourceItem> parsed = GSON.fromJson(json, SOURCE_LIST_TYPE);
+            return parsed != null ? parsed : Collections.emptyList();
+        } catch (Exception ignored) {
+            return Collections.emptyList();
+        }
     }
 
     public static List<Message> toMessageList(List<MessageWithAttachments> relations) {

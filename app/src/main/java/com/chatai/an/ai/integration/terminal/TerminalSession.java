@@ -3,6 +3,7 @@ package com.chatai.an.ai.integration.terminal;
 import android.graphics.Color;
 import android.text.SpannableStringBuilder;
 
+import com.chatai.an.ai.integration.shizuku.ShizukuIntegrationManager;
 import com.chatai.an.ai.integration.termux.TermuxIntegrationManager;
 import com.chatai.an.domain.model.TerminalBackend;
 
@@ -29,6 +30,7 @@ public class TerminalSession {
     public static final int CONSOLE_MUTED_COLOR = Color.parseColor("#8B949E");
     public static final int CONSOLE_PROMPT_COLOR = Color.parseColor("#58A6FF");
     public static final int CONSOLE_TERMUX_COLOR = Color.parseColor("#3FB950");
+    public static final int CONSOLE_SHIZUKU_COLOR = Color.parseColor("#A371F7");
     public static final int CONSOLE_STDERR_COLOR = Color.parseColor("#FF7B72");
     public static final int CONSOLE_SUCCESS_COLOR = Color.parseColor("#3FB950");
     public static final int CONSOLE_WARN_COLOR = Color.parseColor("#D29922");
@@ -42,6 +44,7 @@ public class TerminalSession {
 
     private final AppTerminalManager appTerminalManager;
     private final TermuxIntegrationManager termuxManager;
+    private final ShizukuIntegrationManager shizukuManager;
 
     private final SpannableStringBuilder scrollback = new SpannableStringBuilder();
     private final List<String> history = new ArrayList<>();
@@ -60,8 +63,18 @@ public class TerminalSession {
             TermuxIntegrationManager termuxManager,
             TerminalBackend initialBackend
     ) {
+        this(appTerminalManager, termuxManager, null, initialBackend);
+    }
+
+    public TerminalSession(
+            AppTerminalManager appTerminalManager,
+            TermuxIntegrationManager termuxManager,
+            ShizukuIntegrationManager shizukuManager,
+            TerminalBackend initialBackend
+    ) {
         this.appTerminalManager = appTerminalManager;
         this.termuxManager = termuxManager;
+        this.shizukuManager = shizukuManager;
         this.activeBackend = initialBackend != null ? initialBackend : TerminalBackend.APP_TERMINAL;
         this.appWorkdir = appTerminalManager.resolveWorkingDirectory(null).getAbsolutePath();
         appendWelcomeBanner();
@@ -233,6 +246,8 @@ public class TerminalSession {
         try {
             if (activeBackend == TerminalBackend.TERMUX) {
                 executeViaTermux(cmd, timeoutSeconds, startMs);
+            } else if (activeBackend == TerminalBackend.SHIZUKU) {
+                executeViaShizuku(cmd, timeoutSeconds, startMs);
             } else {
                 executeViaAppTerminal(cmd, timeoutSeconds, startMs);
             }
@@ -311,6 +326,33 @@ public class TerminalSession {
         appendSystemLine("[termux exit " + res.exitCode + " • " + elapsed + "ms]\n", exitColor);
     }
 
+    private void executeViaShizuku(String cmd, int timeoutSeconds, long startMs) {
+        if (shizukuManager == null) {
+            appendSystemLine("Shizuku manager is unavailable.\n", CONSOLE_STDERR_COLOR);
+            return;
+        }
+        try {
+            ShizukuIntegrationManager.ShellResult res = shizukuManager.executeShell(cmd, appWorkdir, timeoutSeconds);
+            if (!res.stdout.isEmpty()) {
+                String normalized = res.stdout.endsWith("\n") ? res.stdout : (res.stdout + "\n");
+                appendAnsiChunk(normalized, CONSOLE_BG_TEXT_COLOR);
+            }
+            if (!res.stderr.isEmpty()) {
+                String normalized = res.stderr.endsWith("\n") ? res.stderr : (res.stderr + "\n");
+                appendAnsiChunk(normalized, CONSOLE_STDERR_COLOR);
+            }
+            if (res.timedOut) {
+                appendSystemLine("[Shizuku command timed out]\n", CONSOLE_WARN_COLOR);
+            }
+            long elapsed = System.currentTimeMillis() - startMs;
+            int exitColor = res.isSuccess() ? CONSOLE_SHIZUKU_COLOR : CONSOLE_STDERR_COLOR;
+            String uidTag = res.uid == 0 ? "root" : ("uid " + res.uid);
+            appendSystemLine("[shizuku(" + uidTag + ") exit " + res.exitCode + " • " + elapsed + "ms]\n", exitColor);
+        } catch (Exception e) {
+            appendSystemLine((e.getMessage() != null ? e.getMessage() : "Shizuku execution failed") + "\n", CONSOLE_STDERR_COLOR);
+        }
+    }
+
     private boolean handleInlineEnvCommand(String cmd) {
         if (cmd.startsWith("export ") && !cmd.contains(";") && !cmd.contains("&&") && !cmd.contains("|")) {
             String expr = cmd.substring("export ".length()).trim();
@@ -380,10 +422,18 @@ public class TerminalSession {
             if (scrollback.length() > 0 && scrollback.charAt(scrollback.length() - 1) != '\n') {
                 scrollback.append('\n');
             }
-            String prefix = activeBackend == TerminalBackend.TERMUX
-                    ? "termux $ "
-                    : shortenDir(appWorkdir) + " $ ";
-            int promptColor = activeBackend == TerminalBackend.TERMUX ? CONSOLE_TERMUX_COLOR : CONSOLE_PROMPT_COLOR;
+            String prefix;
+            int promptColor;
+            if (activeBackend == TerminalBackend.TERMUX) {
+                prefix = "termux $ ";
+                promptColor = CONSOLE_TERMUX_COLOR;
+            } else if (activeBackend == TerminalBackend.SHIZUKU) {
+                prefix = "shizuku # ";
+                promptColor = CONSOLE_SHIZUKU_COLOR;
+            } else {
+                prefix = shortenDir(appWorkdir) + " $ ";
+                promptColor = CONSOLE_PROMPT_COLOR;
+            }
             AnsiTextParser.appendColored(scrollback, prefix, promptColor, true);
             AnsiTextParser.appendColored(scrollback, cmd + "\n", CONSOLE_BG_TEXT_COLOR, true);
             trimScrollbackIfNeeded();

@@ -39,7 +39,7 @@ public class AppSettings {
                 confirmBeforeDelete,
                 autoTitleFromFirstMessage,
                 language,
-                AgentMode.CHAT,
+                AgentMode.CODING,
                 8,
                 30,
                 true,
@@ -161,7 +161,7 @@ public class AppSettings {
         this.confirmBeforeDelete = confirmBeforeDelete;
         this.autoTitleFromFirstMessage = autoTitleFromFirstMessage;
         this.language = language != null ? language : AppLanguage.ENGLISH;
-        this.defaultAgentMode = defaultAgentMode != null ? defaultAgentMode : AgentMode.CHAT;
+        this.defaultAgentMode = defaultAgentMode != null ? defaultAgentMode : AgentMode.CODING;
         this.agentMaxSteps = Math.max(2, Math.min(12, agentMaxSteps));
         this.toolTimeoutSeconds = Math.max(10, Math.min(120, toolTimeoutSeconds));
         this.chatToolsEnabled = chatToolsEnabled;

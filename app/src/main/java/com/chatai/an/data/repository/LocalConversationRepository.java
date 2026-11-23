@@ -77,9 +77,7 @@ public class LocalConversationRepository implements ConversationRepository {
     public void updateConversationProject(String conversationId, String projectId) {
         if (conversationId == null) return;
         String safeProj = projectId != null ? projectId.trim() : "";
-        executors.diskIO().execute(() ->
-                conversationDao.updateProjectId(conversationId, safeProj, System.currentTimeMillis())
-        );
+        conversationDao.updateProjectId(conversationId, safeProj, System.currentTimeMillis());
     }
 
     @Override

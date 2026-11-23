@@ -26,22 +26,7 @@ public class AppViewModelFactory implements ViewModelProvider.Factory {
     @SuppressWarnings("unchecked")
     public <T extends ViewModel> T create(@NonNull Class<T> modelClass) {
         if (modelClass.isAssignableFrom(MainChatViewModel.class)) {
-            return (T) new MainChatViewModel(
-                    container.getConversationRepository(),
-                    container.getMessageRepository(),
-                    container.getModelRepository(),
-                    container.getThemeRepository(),
-                    container.getSettingsRepository(),
-                    container.getMemoryRepository(),
-                    container.getMemoryRetrievalEngine(),
-                    container.getConversationCompactor(),
-                    container.getContextManager(),
-                    container.getAiCore(),
-                    container.getToolRegistry(),
-                    container.getToolExecutor(),
-                    container.getWorkspaceFileManager(),
-                    container.getExecutors()
-            );
+            return (T) new MainChatViewModel(container.getChatSessionCoordinator());
         } else if (modelClass.isAssignableFrom(ConversationSearchViewModel.class)) {
             return (T) new ConversationSearchViewModel(
                     container.getConversationRepository(),
@@ -95,6 +80,7 @@ public class AppViewModelFactory implements ViewModelProvider.Factory {
             return (T) new TerminalViewModel(
                     container.getAppTerminalManager(),
                     container.getTermuxIntegrationManager(),
+                    container.getShizukuIntegrationManager(),
                     container.getSettingsRepository(),
                     container.getThemeRepository(),
                     container.getExecutors()

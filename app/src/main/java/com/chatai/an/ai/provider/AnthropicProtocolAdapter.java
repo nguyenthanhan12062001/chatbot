@@ -2,6 +2,7 @@ package com.chatai.an.ai.provider;
 
 import android.content.Context;
 
+import com.chatai.an.ai.context.CompatHistory;
 import com.chatai.an.ai.core.ExecutionHandle;
 import com.chatai.an.domain.model.AccessType;
 import com.chatai.an.domain.model.AiError;
@@ -94,32 +95,10 @@ public class AnthropicProtocolAdapter implements AiProvider {
         String wireModel = HttpErrorMapper.resolveWireModelId(request.getModel());
         boolean stream = request.isStreamingEnabled() && request.getModel().isStreamingSupported();
 
-        JsonObject payload = buildPayload(request, wireModel, stream);
-        Request httpRequest = new Request.Builder()
-                .url(base + "/messages")
-                .header("x-api-key", apiKey.trim())
-                .header("anthropic-version", "2023-06-01")
-                .post(RequestBody.create(payload.toString(), JSON_MEDIA))
-                .build();
-
-        Call call = client.newCall(httpRequest);
-        if (handle != null) handle.attachCall(call);
-
-        try (Response response = call.execute()) {
-            if (!response.isSuccessful()) {
-                String err = response.body() != null ? response.body().string() : "";
-                listener.onError(HttpErrorMapper.fromHttpResponse(response, err, getProviderId()));
-                return;
-            }
-            if (response.body() == null) {
-                listener.onError(new AiError(AiError.ErrorType.PROTOCOL_ERROR, "Empty response", response.code(), 0, getProviderId()));
-                return;
-            }
-            if (stream) {
-                parseSse(response.body().source(), wireModel, handle, listener);
-            } else {
-                parseSingle(response.body().string(), wireModel, listener);
-            }
+        JsonObject payload = buildPayload(request, wireModel, stream, true);
+        boolean sentTools = payload.has("tools");
+        try {
+            executePayload(base + "/messages", payload, wireModel, stream, apiKey, handle, listener, sentTools, request);
         } catch (IOException e) {
             if (handle != null && handle.isCancelled()) {
                 listener.onError(new AiError(AiError.ErrorType.CANCELLED, "Generation stopped by user", 0, 0, getProviderId()));
@@ -133,7 +112,54 @@ public class AnthropicProtocolAdapter implements AiProvider {
         }
     }
 
-    private JsonObject buildPayload(AiRequest request, String wireModel, boolean stream) {
+    private void executePayload(
+            String url,
+            JsonObject payload,
+            String wireModel,
+            boolean stream,
+            String apiKey,
+            ExecutionHandle handle,
+            AiStreamListener listener,
+            boolean allowRetryWithoutTools,
+            AiRequest originalRequest
+    ) throws IOException {
+        Request httpRequest = new Request.Builder()
+                .url(url)
+                .header("x-api-key", apiKey.trim())
+                .header("anthropic-version", "2023-06-01")
+                .post(RequestBody.create(payload.toString(), JSON_MEDIA))
+                .build();
+
+        Call call = client.newCall(httpRequest);
+        if (handle != null) handle.attachCall(call);
+
+        try (Response response = call.execute()) {
+            if (!response.isSuccessful()) {
+                String err = response.body() != null ? response.body().string() : "";
+                String lowerErr = err.toLowerCase(java.util.Locale.ROOT);
+                if (allowRetryWithoutTools
+                        && (response.code() == 400 || response.code() == 422)
+                        && (lowerErr.contains("tool") || lowerErr.contains("schema") || lowerErr.contains("unsupported"))) {
+                    JsonObject fallbackPayload = buildPayload(originalRequest, wireModel, stream, false);
+                    executePayload(url, fallbackPayload, wireModel, stream, apiKey, handle, listener, false, originalRequest);
+                    return;
+                }
+                listener.onError(HttpErrorMapper.fromHttpResponse(response, err, getProviderId()));
+                return;
+            }
+            if (response.body() == null) {
+                listener.onError(new AiError(AiError.ErrorType.PROTOCOL_ERROR, "Empty response", response.code(), 0, getProviderId()));
+                return;
+            }
+            if (stream) {
+                parseSse(response.body().source(), wireModel, handle, listener);
+            } else {
+                parseSingle(response.body().string(), wireModel, listener);
+            }
+        }
+    }
+
+    private JsonObject buildPayload(AiRequest request, String wireModel, boolean stream, boolean includeTools) {
         JsonObject root = new JsonObject();
         root.addProperty("model", wireModel);
         root.addProperty("max_tokens", Math.min(8192, request.getModel().getOutputLimitTokens()));
@@ -144,7 +170,10 @@ public class AnthropicProtocolAdapter implements AiProvider {
 
         JsonArray messages = new JsonArray();
         boolean imageSupported = request.getModel().isImageSupported();
-        for (Message msg : request.getContextMessages()) {
+        List<Message> normalizedMessages = CompatHistory.normalizeForProvider(
+                request.getContextMessages(), getProtocolType()
+        );
+        for (Message msg : normalizedMessages) {
             JsonObject mObj = new JsonObject();
             mObj.addProperty("role", msg.getRole() == MessageRole.ASSISTANT ? "assistant" : "user");
             JsonArray blocks = new JsonArray();
@@ -178,7 +207,8 @@ public class AnthropicProtocolAdapter implements AiProvider {
         }
         root.add("messages", messages);
 
-        if (request.getTools() != null
+        if (includeTools
+                && request.getTools() != null
                 && !request.getTools().isEmpty()
                 && request.getModel().getCapabilityStatus(ModelCapability.TOOL_CALLING) != CapabilityStatus.UNSUPPORTED) {
             JsonArray toolsArr = new JsonArray();

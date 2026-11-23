@@ -7,20 +7,28 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
+import android.graphics.Bitmap;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.EditText;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.TextView;
 import android.widget.Toast;
+
+import com.bumptech.glide.Glide;
 
 import androidx.activity.EdgeToEdge;
 import androidx.activity.OnBackPressedCallback;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.PickVisualMediaRequest;
 import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 import androidx.core.graphics.Insets;
@@ -29,12 +37,15 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import com.chatai.an.R;
+import com.chatai.an.ai.core.ChatSessionCoordinator;
+import com.chatai.an.ai.integration.shizuku.ShizukuIntegrationManager;
+import com.chatai.an.ai.tool.ToolExecutor;
 import com.chatai.an.core.AppExecutors;
 import com.chatai.an.core.AppLogger;
 import com.chatai.an.core.AttachmentStorageHelper;
-import com.chatai.an.ai.tool.ToolExecutor;
 import com.chatai.an.databinding.ActivityMainBinding;
 import com.chatai.an.domain.model.AccessType;
 import com.chatai.an.domain.model.AgentMode;
@@ -45,6 +56,7 @@ import com.chatai.an.domain.model.AttachmentType;
 import com.chatai.an.domain.model.CapabilityStatus;
 import com.chatai.an.domain.model.Conversation;
 import com.chatai.an.domain.model.ExecutionState;
+import com.chatai.an.domain.model.IntegrationStatus;
 import com.chatai.an.domain.model.Message;
 import com.chatai.an.domain.model.ModelCapability;
 import com.chatai.an.domain.model.ThemeConfig;
@@ -77,6 +89,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -97,7 +110,9 @@ public class MainActivity extends AppCompatActivity {
     private AppSettings currentSettings;
     private ThinkingState currentThinkingState = ThinkingState.DISABLED;
     private AgentMode currentAgentMode = AgentMode.CHAT;
-    private androidx.appcompat.app.AlertDialog activeToolConfirmDialog;
+    private ChatSessionCoordinator.ContextMetrics currentContextMetrics = ChatSessionCoordinator.ContextMetrics.empty();
+    private ShizukuIntegrationManager.ShizukuState currentShizukuState;
+    private boolean userScrolledUp = false;
 
     private File pendingCameraFile;
     private boolean pendingStartBubbleAfterOverlayPerm = false;
@@ -209,6 +224,8 @@ public class MainActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         updateBubbleButtonTint();
+        appContainer.getShizukuIntegrationManager().refreshState();
+        viewModel.refreshContextMetrics();
     }
 
     private void handleIntentConversation(Intent intent) {
@@ -261,11 +278,61 @@ public class MainActivity extends AppCompatActivity {
             public void onPreviewAttachment(Attachment attachment) {
                 AttachmentPreviewDialogHelper.show(MainActivity.this, attachment);
             }
+
+            @Override
+            public void onRegenerateMessage(Message message) {
+                viewModel.regenerateMessage(message);
+            }
+
+            @Override
+            public void onHandoverToCode(Message message) {
+                viewModel.handoverToCode(null);
+            }
+
+            @Override
+            public void onFollowUpClicked(String suggestion) {
+                viewModel.sendOrQueueMessage(suggestion);
+            }
+
+            @Override
+            public void onApproveToolCall(String executionId, boolean allowForSession) {
+                viewModel.respondToToolConfirmation(executionId, true, allowForSession);
+            }
+
+            @Override
+            public void onDenyToolCall(String executionId) {
+                viewModel.respondToToolConfirmation(executionId, false, false);
+            }
+
+            @Override
+            public void onCopyToolOutput(String text) {
+                copyToClipboard(text);
+            }
+
+            @Override
+            public void onPreviewImage(String title, String imageSource) {
+                showImageSourcePreviewDialog(title, imageSource);
+            }
+
+            @Override
+            public void onOpenSourceUrl(String urlOrPath) {
+                handleSourceNavigation(urlOrPath);
+            }
         });
         LinearLayoutManager msgLayoutManager = new LinearLayoutManager(this);
         msgLayoutManager.setStackFromEnd(true);
         binding.rvMessages.setLayoutManager(msgLayoutManager);
         binding.rvMessages.setAdapter(messageAdapter);
+        binding.rvMessages.addOnScrollListener(new RecyclerView.OnScrollListener() {
+            @Override
+            public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
+                boolean canScrollDown = recyclerView.canScrollVertically(1);
+                userScrolledUp = canScrollDown;
+                binding.btnScrollToBottom.setVisibility(
+                        canScrollDown && messageAdapter.getItemCount() > 0 ? View.VISIBLE : View.GONE
+                );
+            }
+        });
 
         pendingAttachmentAdapter = new PendingAttachmentAdapter(new PendingAttachmentAdapter.OnAttachmentInteractionListener() {
             @Override
@@ -356,6 +423,23 @@ public class MainActivity extends AppCompatActivity {
             sheet.show(getSupportFragmentManager(), "model_selector_main");
         });
 
+        binding.btnModeChat.setOnClickListener(v -> viewModel.setAgentMode(AgentMode.CHAT));
+        binding.btnModeCode.setOnClickListener(v -> viewModel.setAgentMode(AgentMode.CODING));
+        binding.btnWorkspaceChip.setOnClickListener(v -> showProjectTagDialog());
+        binding.btnShizukuPill.setOnClickListener(v -> handleShizukuQuickTap());
+        binding.btnContextMeter.setOnClickListener(v -> showContextInspectorDialog());
+
+        binding.btnScrollToBottom.setOnClickListener(v -> {
+            userScrolledUp = false;
+            int count = messageAdapter.getItemCount();
+            if (count > 0) {
+                binding.rvMessages.smoothScrollToPosition(count - 1);
+            }
+            binding.btnScrollToBottom.setVisibility(View.GONE);
+        });
+
+        binding.btnQueueClear.setOnClickListener(v -> viewModel.clearFollowUpQueue());
+
         binding.btnAttach.setOnClickListener(v -> {
             AttachmentPickerBottomSheet sheet = new AttachmentPickerBottomSheet();
             sheet.setOnAttachmentActionListener(new AttachmentPickerBottomSheet.OnAttachmentActionListener() {
@@ -408,7 +492,11 @@ public class MainActivity extends AppCompatActivity {
             String text = binding.etMessageInput.getText() != null
                     ? binding.etMessageInput.getText().toString()
                     : "";
-            viewModel.sendMessage(text);
+            if (handleUiOnlySlashCommand(text.trim())) {
+                binding.etMessageInput.setText("");
+                return;
+            }
+            viewModel.sendOrQueueMessage(text);
             binding.etMessageInput.setText("");
         });
 
@@ -420,6 +508,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
                 updateSendButtonState();
+                updateSlashCommandPopup(s != null ? s.toString() : "");
             }
 
             @Override
@@ -439,6 +528,98 @@ public class MainActivity extends AppCompatActivity {
         binding.etMessageInput.requestFocus();
     }
 
+    private boolean handleUiOnlySlashCommand(String trimmed) {
+        if ("/context".equalsIgnoreCase(trimmed)) {
+            showContextInspectorDialog();
+            return true;
+        }
+        if ("/shizuku".equalsIgnoreCase(trimmed)) {
+            handleShizukuQuickTap();
+            return true;
+        }
+        if ("/review".equalsIgnoreCase(trimmed)) {
+            viewModel.setAgentMode(AgentMode.CODING);
+            viewModel.sendOrQueueMessage("Explore the active workspace files, check for bugs or improvements, and provide a concise review.");
+            return true;
+        }
+        return false;
+    }
+
+    private void updateSlashCommandPopup(String rawInput) {
+        String trimmed = rawInput != null ? rawInput.trim() : "";
+        if (!trimmed.startsWith("/") || trimmed.contains("\n") || trimmed.contains(" ")) {
+            binding.llSlashCommandPopup.setVisibility(View.GONE);
+            binding.llSlashCommandPopup.removeAllViews();
+            return;
+        }
+        String query = trimmed.toLowerCase(Locale.ROOT);
+        List<String[]> commands = new ArrayList<>();
+        commands.add(new String[]{"/code", getString(R.string.slash_cmd_code_desc)});
+        commands.add(new String[]{"/chat", getString(R.string.slash_cmd_chat_desc)});
+        commands.add(new String[]{"/context", getString(R.string.slash_cmd_context_desc)});
+        commands.add(new String[]{"/shizuku", getString(R.string.slash_cmd_shizuku_desc)});
+        commands.add(new String[]{"/review", getString(R.string.slash_cmd_review_desc)});
+        commands.add(new String[]{"/new", getString(R.string.slash_cmd_new_desc)});
+        commands.add(new String[]{"/clear", getString(R.string.slash_cmd_clear_desc)});
+
+        binding.llSlashCommandPopup.removeAllViews();
+        int matchCount = 0;
+        for (String[] cmd : commands) {
+            if (!cmd[0].startsWith(query)) continue;
+            matchCount++;
+            LinearLayout row = new LinearLayout(this);
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            row.setPadding(
+                    ThemeApplier.dpToPxInt(this, 10f),
+                    ThemeApplier.dpToPxInt(this, 8f),
+                    ThemeApplier.dpToPxInt(this, 10f),
+                    ThemeApplier.dpToPxInt(this, 8f)
+            );
+            row.setClickable(true);
+            row.setFocusable(true);
+            row.setBackgroundResource(android.R.drawable.list_selector_background);
+
+            TextView tvCmd = new TextView(this);
+            tvCmd.setText(cmd[0]);
+            tvCmd.setTextSize(12.5f);
+            tvCmd.setTypeface(android.graphics.Typeface.MONOSPACE, android.graphics.Typeface.BOLD);
+            if (activePalette != null) tvCmd.setTextColor(activePalette.getPrimaryColor());
+
+            TextView tvDesc = new TextView(this);
+            tvDesc.setText("  ·  " + cmd[1]);
+            tvDesc.setTextSize(12f);
+            if (activePalette != null) tvDesc.setTextColor(activePalette.getTextSecondaryColor());
+
+            row.addView(tvCmd);
+            row.addView(tvDesc);
+            final String chosenCmd = cmd[0];
+            row.setOnClickListener(v -> {
+                binding.llSlashCommandPopup.setVisibility(View.GONE);
+                if ("/code".equals(chosenCmd)) {
+                    viewModel.setAgentMode(AgentMode.CODING);
+                    binding.etMessageInput.setText("");
+                } else if ("/chat".equals(chosenCmd)) {
+                    viewModel.setAgentMode(AgentMode.CHAT);
+                    binding.etMessageInput.setText("");
+                } else if ("/context".equals(chosenCmd)) {
+                    binding.etMessageInput.setText("");
+                    showContextInspectorDialog();
+                } else if ("/shizuku".equals(chosenCmd)) {
+                    binding.etMessageInput.setText("");
+                    handleShizukuQuickTap();
+                } else if ("/review".equals(chosenCmd)) {
+                    binding.etMessageInput.setText("");
+                    handleUiOnlySlashCommand("/review");
+                } else if ("/new".equals(chosenCmd) || "/clear".equals(chosenCmd)) {
+                    binding.etMessageInput.setText("");
+                    viewModel.sendOrQueueMessage(chosenCmd);
+                }
+            });
+            binding.llSlashCommandPopup.addView(row);
+        }
+        binding.llSlashCommandPopup.setVisibility(matchCount > 0 ? View.VISIBLE : View.GONE);
+    }
+
     private void observeState() {
         viewModel.getActiveTheme().observe(this, this::applyThemeConfig);
 
@@ -450,6 +631,7 @@ public class MainActivity extends AppCompatActivity {
                 ChatBubbleService.start(this, viewModel.getActiveConversationId().getValue(), false);
             }
             updateBubbleButtonTint();
+            updateWorkspaceChipText();
         });
 
         viewModel.getSelectedModel().observe(this, model -> {
@@ -472,22 +654,24 @@ public class MainActivity extends AppCompatActivity {
             boolean isCoding = currentAgentMode == AgentMode.CODING;
             binding.tvAgentMode.setText(isCoding ? R.string.mode_coding_short : R.string.mode_chat_short);
             binding.ivAgentMode.setImageResource(isCoding ? R.drawable.ic_build : R.drawable.ic_chat_spark);
+            messageAdapter.setAgentMode(currentAgentMode);
             styleAgentModePill();
         });
 
+        appContainer.getShizukuIntegrationManager().observeState().observe(this, state -> {
+            currentShizukuState = state;
+            styleShizukuPill();
+        });
+
+        viewModel.getContextMetrics().observe(this, metrics -> {
+            currentContextMetrics = metrics != null ? metrics : ChatSessionCoordinator.ContextMetrics.empty();
+            styleContextMeterPill();
+        });
+
         viewModel.getPendingToolConfirmation().observe(this, pending -> {
-            if (activeToolConfirmDialog != null && activeToolConfirmDialog.isShowing()) {
-                activeToolConfirmDialog.dismiss();
-                activeToolConfirmDialog = null;
+            if (pending != null && messageAdapter.getItemCount() > 0 && !userScrolledUp) {
+                binding.rvMessages.smoothScrollToPosition(messageAdapter.getItemCount() - 1);
             }
-            if (pending == null) return;
-            activeToolConfirmDialog = new MaterialAlertDialogBuilder(this)
-                    .setTitle(R.string.tool_confirm_title)
-                    .setMessage("Tool: " + pending.toolName + "\nReason: " + pending.reason + "\n\nArgs: " + pending.argsPreview)
-                    .setCancelable(false)
-                    .setNegativeButton(R.string.tool_confirm_deny, (d, w) -> viewModel.respondToToolConfirmation(false))
-                    .setPositiveButton(R.string.tool_confirm_allow, (d, w) -> viewModel.respondToToolConfirmation(true))
-                    .show();
         });
 
         viewModel.getLiveToolExecutions().observe(this, executions -> {
@@ -497,6 +681,8 @@ public class MainActivity extends AppCompatActivity {
                 binding.tvExecutionStatus.setText("Running tool: " + latest.toolName + " (" + latest.status.name() + ")");
             }
         });
+
+        viewModel.getFollowUpQueue().observe(this, this::renderFollowUpQueue);
 
         viewModel.getThinkingState().observe(this, state -> {
             currentThinkingState = state != null ? state : ThinkingState.DISABLED;
@@ -509,6 +695,7 @@ public class MainActivity extends AppCompatActivity {
             } else {
                 binding.btnProjectTag.setText(R.string.project_tag_none);
             }
+            updateWorkspaceChipText();
             styleProjectTagPill();
         });
 
@@ -520,8 +707,11 @@ public class MainActivity extends AppCompatActivity {
                     || state == ExecutionState.EXECUTING_TOOL;
             boolean showBanner = state != null && state != ExecutionState.IDLE;
 
+            messageAdapter.setAiBusy(active);
             binding.btnStop.setVisibility(active ? View.VISIBLE : View.GONE);
-            binding.btnSend.setVisibility(active ? View.GONE : View.VISIBLE);
+            binding.btnSend.setVisibility(View.VISIBLE);
+            binding.btnSend.setContentDescription(getString(active ? R.string.cd_queue_send : R.string.cd_send));
+            binding.etMessageInput.setHint(active ? R.string.composer_queue_hint : R.string.composer_hint);
             binding.executionStatusBanner.setVisibility(showBanner ? View.VISIBLE : View.GONE);
             binding.pbExecutionStatus.setVisibility(active ? View.VISIBLE : View.GONE);
 
@@ -576,7 +766,9 @@ public class MainActivity extends AppCompatActivity {
             boolean hasMessages = messages != null && !messages.isEmpty();
             binding.emptyChatContainer.setVisibility(hasMessages ? View.GONE : View.VISIBLE);
             binding.rvMessages.setVisibility(hasMessages ? View.VISIBLE : View.GONE);
-            if (hasMessages) {
+            if (!hasMessages) {
+                binding.btnScrollToBottom.setVisibility(View.GONE);
+            } else if (!userScrolledUp) {
                 binding.rvMessages.scrollToPosition(messages.size() - 1);
             }
         });
@@ -593,6 +785,104 @@ public class MainActivity extends AppCompatActivity {
         );
     }
 
+    private void renderFollowUpQueue(List<ChatSessionCoordinator.QueuedMessage> queue) {
+        binding.llFollowUpQueueItems.removeAllViews();
+        if (queue == null || queue.isEmpty()) {
+            binding.llFollowUpQueueContainer.setVisibility(View.GONE);
+            return;
+        }
+        binding.llFollowUpQueueContainer.setVisibility(View.VISIBLE);
+        binding.tvQueueHeader.setText(getString(R.string.queue_header_title, queue.size()));
+
+        LayoutInflater inflater = LayoutInflater.from(this);
+        for (ChatSessionCoordinator.QueuedMessage item : queue) {
+            View row = inflater.inflate(R.layout.item_queued_message, binding.llFollowUpQueueItems, false);
+            TextView tvText = row.findViewById(R.id.tv_queued_text);
+            TextView btnSendNow = row.findViewById(R.id.btn_queued_send_now);
+            View btnRemove = row.findViewById(R.id.btn_queued_remove);
+
+            String label = !item.text.isEmpty() ? item.text : "(" + item.attachments.size() + " attachment)";
+            tvText.setText(label);
+
+            if (activePalette != null) {
+                row.setBackground(GradientDrawableFactory.createSurfaceCard(
+                        activePalette.getSurfaceColor(),
+                        ThemeApplier.blendWithAlpha(activePalette.getBorderColor(), 110),
+                        ThemeApplier.dpToPxInt(this, 0.75f),
+                        ThemeApplier.dpToPx(this, 10f)
+                ));
+                tvText.setTextColor(activePalette.getTextPrimaryColor());
+                btnSendNow.setBackground(GradientDrawableFactory.createPill(
+                        ThemeApplier.blendWithAlpha(activePalette.getPrimaryColor(), 26),
+                        activePalette.getPrimaryColor(),
+                        ThemeApplier.dpToPxInt(this, 1f)
+                ));
+                btnSendNow.setTextColor(activePalette.getPrimaryColor());
+            }
+
+            btnSendNow.setOnClickListener(v -> viewModel.sendQueuedFollowUpNow(item.id));
+            btnRemove.setOnClickListener(v -> viewModel.removeQueuedFollowUp(item.id));
+            binding.llFollowUpQueueItems.addView(row);
+        }
+    }
+
+    private void handleShizukuQuickTap() {
+        ShizukuIntegrationManager shizuku = appContainer.getShizukuIntegrationManager();
+        ShizukuIntegrationManager.ShizukuState state = shizuku.inspectState();
+        if (state.status == IntegrationStatus.ACTIVE || state.status == IntegrationStatus.CONNECTED) {
+            new MaterialAlertDialogBuilder(this)
+                    .setTitle(getString(R.string.terminal_backend_shizuku) + " · " + state.privilegeLevel.getLabel())
+                    .setMessage(state.detail)
+                    .setNeutralButton(R.string.terminal_open_hub, (d, w) ->
+                            startActivity(new Intent(this, IntegrationsHubActivity.class)))
+                    .setNegativeButton(R.string.sidebar_terminal, (d, w) ->
+                            startActivity(new Intent(this, TerminalActivity.class)))
+                    .setPositiveButton(android.R.string.ok, null)
+                    .show();
+            return;
+        }
+        ShizukuIntegrationManager.QuickActionOutcome outcome = shizuku.requestOrConnect(this);
+        if (outcome == ShizukuIntegrationManager.QuickActionOutcome.SHOW_RATIONALE_NEEDED) {
+            new MaterialAlertDialogBuilder(this)
+                    .setTitle(R.string.shizuku_rationale_title)
+                    .setMessage(R.string.shizuku_rationale_message)
+                    .setNeutralButton(R.string.shizuku_open_manager, (d, w) -> shizuku.openShizukuApp(this))
+                    .setNegativeButton(R.string.action_cancel, null)
+                    .setPositiveButton(R.string.tool_confirm_allow, (d, w) -> shizuku.requestPermission())
+                    .show();
+        } else if (outcome == ShizukuIntegrationManager.QuickActionOutcome.PERMISSION_REQUESTED) {
+            Toast.makeText(this, R.string.hub_shizuku_perm, Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void showContextInspectorDialog() {
+        ChatSessionCoordinator.ContextMetrics m = currentContextMetrics != null
+                ? currentContextMetrics
+                : ChatSessionCoordinator.ContextMetrics.empty();
+        String modelName = currentModel != null ? currentModel.getName() : "AnAI";
+        String summary = getString(
+                R.string.context_inspector_summary,
+                modelName,
+                m.windowTokens,
+                m.fillPercent,
+                m.systemTokens,
+                m.memoryTokens,
+                m.summaryTokens,
+                m.messageCount,
+                m.historyTokens,
+                m.totalTokens
+        );
+        new MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.context_inspector_title)
+                .setMessage(summary)
+                .setNeutralButton(R.string.context_compact_now, (d, w) -> {
+                    viewModel.compactConversationNow();
+                    Toast.makeText(this, R.string.context_compacted_done, Toast.LENGTH_SHORT).show();
+                })
+                .setPositiveButton(android.R.string.ok, null)
+                .show();
+    }
+
     private void applyThemeConfig(ThemeConfig config) {
         activeIsDark = ThemeManager.isDarkActive(this, config);
         activePalette = ThemeManager.resolvePalette(this, config);
@@ -604,6 +894,30 @@ public class MainActivity extends AppCompatActivity {
         binding.btnTopNewChat.setColorFilter(activePalette.getTextPrimaryColor());
         updateBubbleButtonTint();
 
+        int stroke = ThemeApplier.dpToPxInt(this, 1f);
+        binding.btnScrollToBottom.setBackground(GradientDrawableFactory.createPill(
+                activePalette.getSurfaceColor(),
+                activePalette.getBorderColor(),
+                stroke
+        ));
+        binding.btnScrollToBottom.setColorFilter(activePalette.getPrimaryColor());
+
+        binding.llFollowUpQueueContainer.setBackground(GradientDrawableFactory.createSurfaceCard(
+                activePalette.getSurfaceVariantColor(),
+                activePalette.getBorderColor(),
+                stroke,
+                ThemeApplier.dpToPx(this, 14f)
+        ));
+        binding.tvQueueHeader.setTextColor(activePalette.getTextPrimaryColor());
+        binding.btnQueueClear.setTextColor(activePalette.getTextSecondaryColor());
+
+        binding.llSlashCommandPopup.setBackground(GradientDrawableFactory.createSurfaceCard(
+                activePalette.getSurfaceColor(),
+                activePalette.getBorderColor(),
+                stroke,
+                ThemeApplier.dpToPx(this, 14f)
+        ));
+
         // Empty State
         binding.emptySparkBadge.setBackground(
                 GradientDrawableFactory.createLinearGradient(activePalette, ThemeApplier.dpToPx(this, 20f))
@@ -614,7 +928,7 @@ public class MainActivity extends AppCompatActivity {
         binding.tvPhase1Badge.setBackground(GradientDrawableFactory.createPill(
                 ThemeApplier.blendWithAlpha(activePalette.getPrimaryColor(), 28),
                 activePalette.getPrimaryColor(),
-                ThemeApplier.dpToPxInt(this, 1f)
+                stroke
         ));
         binding.tvPhase1Badge.setTextColor(activePalette.getPrimaryColor());
         binding.executionStatusBanner.setBackground(GradientDrawableFactory.createPill(
@@ -625,7 +939,6 @@ public class MainActivity extends AppCompatActivity {
         binding.tvExecutionStatus.setTextColor(activePalette.getPrimaryColor());
 
         float cardRadius = ThemeApplier.dpToPx(this, 16f);
-        int stroke = ThemeApplier.dpToPxInt(this, 1f);
         View[] suggestionCards = {binding.cardSuggestion1, binding.cardSuggestion2, binding.cardSuggestion3};
         for (View card : suggestionCards) {
             card.setBackground(GradientDrawableFactory.createSurfaceCard(
@@ -705,6 +1018,8 @@ public class MainActivity extends AppCompatActivity {
 
         styleModelPill();
         styleAgentModePill();
+        styleShizukuPill();
+        styleContextMeterPill();
         styleDeepThinkingPill();
         styleProjectTagPill();
         updateSendButtonState();
@@ -714,10 +1029,42 @@ public class MainActivity extends AppCompatActivity {
         sidebarAdapter.setPalette(activePalette);
     }
 
+    private void updateWorkspaceChipText() {
+        String proj = viewModel != null ? viewModel.getActiveProjectId().getValue() : "";
+        if (proj != null && !proj.trim().isEmpty()) {
+            binding.tvWorkspaceChip.setText(proj.trim());
+        } else if (currentSettings != null && !currentSettings.getActiveWorkspacePath().trim().isEmpty()) {
+            String path = currentSettings.getActiveWorkspacePath().trim();
+            int idx = path.lastIndexOf('/');
+            binding.tvWorkspaceChip.setText(idx >= 0 && idx < path.length() - 1 ? path.substring(idx + 1) : getString(R.string.workspace_chip_default));
+        } else {
+            binding.tvWorkspaceChip.setText(R.string.workspace_chip_default);
+        }
+    }
+
     private void styleAgentModePill() {
         if (activePalette == null) return;
         int stroke = ThemeApplier.dpToPxInt(this, 1f);
-        if (currentAgentMode == AgentMode.CODING) {
+        boolean isCoding = currentAgentMode == AgentMode.CODING;
+
+        binding.harnessModeToggle.setBackground(GradientDrawableFactory.createPill(
+                activePalette.getSurfaceVariantColor(),
+                activePalette.getBorderColor(),
+                stroke
+        ));
+        if (isCoding) {
+            binding.btnModeCode.setBackground(GradientDrawableFactory.createLinearGradient(activePalette, 999f));
+            binding.btnModeCode.setTextColor(activePalette.getOnPrimaryColor());
+            binding.btnModeChat.setBackground(null);
+            binding.btnModeChat.setTextColor(activePalette.getTextSecondaryColor());
+        } else {
+            binding.btnModeChat.setBackground(GradientDrawableFactory.createLinearGradient(activePalette, 999f));
+            binding.btnModeChat.setTextColor(activePalette.getOnPrimaryColor());
+            binding.btnModeCode.setBackground(null);
+            binding.btnModeCode.setTextColor(activePalette.getTextSecondaryColor());
+        }
+
+        if (isCoding) {
             binding.btnAgentMode.setBackground(
                     GradientDrawableFactory.createLinearGradient(activePalette, 999f)
             );
@@ -732,6 +1079,51 @@ public class MainActivity extends AppCompatActivity {
             binding.ivAgentMode.setColorFilter(activePalette.getPrimaryColor());
             binding.tvAgentMode.setTextColor(activePalette.getTextPrimaryColor());
         }
+    }
+
+    private void styleShizukuPill() {
+        ShizukuIntegrationManager shizuku = appContainer.getShizukuIntegrationManager();
+        ShizukuIntegrationManager.ShizukuState s = currentShizukuState != null ? currentShizukuState : shizuku.inspectState();
+        binding.tvShizukuPill.setText(shizuku.getShortStatusBadge());
+
+        int supported = ContextCompat.getColor(this, R.color.status_supported);
+        int pending = ContextCompat.getColor(this, R.color.status_unknown);
+        int unsupported = ContextCompat.getColor(this, R.color.status_unsupported);
+        int neutral = activePalette != null ? activePalette.getTextSecondaryColor() : 0xFF6B5B53;
+
+        int stateColor = neutral;
+        if (s.status == IntegrationStatus.ACTIVE || s.status == IntegrationStatus.CONNECTED) {
+            stateColor = supported;
+        } else if (s.status == IntegrationStatus.PERMISSION_REQUIRED) {
+            stateColor = pending;
+        } else if (s.status == IntegrationStatus.NOT_CONNECTED || s.status == IntegrationStatus.ERROR) {
+            stateColor = unsupported;
+        }
+
+        binding.viewShizukuDot.setBackground(GradientDrawableFactory.createPill(stateColor, 0, 0));
+        if (activePalette != null) {
+            binding.btnShizukuPill.setBackground(GradientDrawableFactory.createPill(
+                    ThemeApplier.blendWithAlpha(stateColor, 20),
+                    ThemeApplier.blendWithAlpha(stateColor, 90),
+                    ThemeApplier.dpToPxInt(this, 1f)
+            ));
+            binding.tvShizukuPill.setTextColor(activePalette.getTextPrimaryColor());
+        }
+    }
+
+    private void styleContextMeterPill() {
+        int pct = currentContextMetrics != null ? currentContextMetrics.fillPercent : 0;
+        binding.tvContextMeter.setText(getString(R.string.context_meter_label, pct));
+        if (activePalette == null) return;
+        int meterColor = pct >= 80
+                ? ContextCompat.getColor(this, R.color.status_unsupported)
+                : (pct >= 55 ? ContextCompat.getColor(this, R.color.status_unknown) : activePalette.getPrimaryColor());
+        binding.btnContextMeter.setBackground(GradientDrawableFactory.createPill(
+                activePalette.getSurfaceVariantColor(),
+                activePalette.getBorderColor(),
+                ThemeApplier.dpToPxInt(this, 1f)
+        ));
+        binding.tvContextMeter.setTextColor(meterColor);
     }
 
     private void styleModelPill() {
@@ -808,6 +1200,13 @@ public class MainActivity extends AppCompatActivity {
                     stroke
             ));
             binding.btnProjectTag.setTextColor(activePalette.getPrimaryColor());
+            binding.btnWorkspaceChip.setBackground(GradientDrawableFactory.createPill(
+                    ThemeApplier.blendWithAlpha(activePalette.getPrimaryColor(), 24),
+                    activePalette.getPrimaryColor(),
+                    stroke
+            ));
+            binding.ivWorkspaceChip.setColorFilter(activePalette.getPrimaryColor());
+            binding.tvWorkspaceChip.setTextColor(activePalette.getPrimaryColor());
         } else {
             binding.btnProjectTag.setBackground(GradientDrawableFactory.createPill(
                     activePalette.getSurfaceVariantColor(),
@@ -815,6 +1214,13 @@ public class MainActivity extends AppCompatActivity {
                     stroke
             ));
             binding.btnProjectTag.setTextColor(activePalette.getTextSecondaryColor());
+            binding.btnWorkspaceChip.setBackground(GradientDrawableFactory.createPill(
+                    activePalette.getSurfaceVariantColor(),
+                    activePalette.getBorderColor(),
+                    stroke
+            ));
+            binding.ivWorkspaceChip.setColorFilter(activePalette.getTextSecondaryColor());
+            binding.tvWorkspaceChip.setTextColor(activePalette.getTextPrimaryColor());
         }
     }
 
@@ -827,9 +1233,12 @@ public class MainActivity extends AppCompatActivity {
         int pad = ThemeApplier.dpToPxInt(this, 20f);
         input.setPadding(pad, pad / 2, pad, pad / 2);
 
+        String workspacePath = appContainer.getWorkspaceFileManager().getActiveWorkspacePath();
+        String msg = getString(R.string.project_dialog_message) + "\n\nWorkspace: " + workspacePath;
+
         new MaterialAlertDialogBuilder(this)
                 .setTitle(R.string.project_dialog_title)
-                .setMessage(R.string.project_dialog_message)
+                .setMessage(msg)
                 .setView(input)
                 .setNeutralButton(R.string.project_clear, (d, w) -> viewModel.setConversationProject(""))
                 .setNegativeButton(R.string.action_cancel, null)
@@ -1023,5 +1432,56 @@ public class MainActivity extends AppCompatActivity {
                 .setNegativeButton(R.string.action_cancel, null)
                 .setPositiveButton(R.string.action_confirm_delete, (d, w) -> viewModel.deleteConversation(conversation.getId()))
                 .show();
+    }
+
+    private void showImageSourcePreviewDialog(String title, String imageSource) {
+        if (imageSource == null || imageSource.trim().isEmpty()) return;
+        View view = LayoutInflater.from(this).inflate(R.layout.dialog_attachment_preview, null);
+        ImageView iv = view.findViewById(R.id.iv_preview_image);
+        View fileInfo = view.findViewById(R.id.preview_file_info_container);
+        if (fileInfo != null) fileInfo.setVisibility(View.GONE);
+        if (iv != null) {
+            iv.setVisibility(View.VISIBLE);
+            String src = imageSource.trim();
+            if (src.startsWith("data:image/")) {
+                Bitmap bmp = MessageAdapter.decodeDataUriBitmap(src);
+                if (bmp != null) {
+                    iv.setImageBitmap(bmp);
+                } else {
+                    iv.setImageResource(R.drawable.ic_photo);
+                }
+            } else if (src.startsWith("/") || src.startsWith("file://")) {
+                String path = src.startsWith("file://") ? src.substring("file://".length()) : src;
+                File file = new File(path);
+                if (file.exists()) {
+                    Glide.with(this).load(file).into(iv);
+                } else {
+                    Glide.with(this).load(Uri.parse(src)).into(iv);
+                }
+            } else {
+                Glide.with(this).load(src).into(iv);
+            }
+        }
+        String dialogTitle = (title != null && !title.trim().isEmpty())
+                ? title.trim()
+                : getString(R.string.image_preview_title);
+        new MaterialAlertDialogBuilder(this)
+                .setTitle(dialogTitle)
+                .setView(view)
+                .setPositiveButton(android.R.string.ok, null)
+                .show();
+    }
+
+    private void handleSourceNavigation(String urlOrPath) {
+        if (urlOrPath == null || urlOrPath.trim().isEmpty()) return;
+        String target = urlOrPath.trim();
+        if (target.startsWith("http://") || target.startsWith("https://")) {
+            try {
+                startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(target)));
+                return;
+            } catch (Exception ignored) {
+            }
+        }
+        copyToClipboard(target);
     }
 }

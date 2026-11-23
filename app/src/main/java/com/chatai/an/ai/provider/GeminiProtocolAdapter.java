@@ -2,6 +2,7 @@ package com.chatai.an.ai.provider;
 
 import android.content.Context;
 
+import com.chatai.an.ai.context.CompatHistory;
 import com.chatai.an.ai.core.ExecutionHandle;
 import com.chatai.an.data.repository.UnifiedModelRepository;
 import com.chatai.an.domain.model.AccessType;
@@ -96,31 +97,10 @@ public class GeminiProtocolAdapter implements AiProvider {
                 ? base + "/v1beta/models/" + wireModel + ":streamGenerateContent?alt=sse"
                 : base + "/v1beta/models/" + wireModel + ":generateContent";
 
-        JsonObject payload = buildPayload(request);
-        Request httpRequest = new Request.Builder()
-                .url(endpoint)
-                .header("x-goog-api-key", apiKey.trim())
-                .post(RequestBody.create(payload.toString(), JSON_MEDIA))
-                .build();
-
-        Call call = client.newCall(httpRequest);
-        if (handle != null) handle.attachCall(call);
-
-        try (Response response = call.execute()) {
-            if (!response.isSuccessful()) {
-                String err = response.body() != null ? response.body().string() : "";
-                listener.onError(HttpErrorMapper.fromHttpResponse(response, err, getProviderId()));
-                return;
-            }
-            if (response.body() == null) {
-                listener.onError(new AiError(AiError.ErrorType.PROTOCOL_ERROR, "Empty response", response.code(), 0, getProviderId()));
-                return;
-            }
-            if (stream) {
-                parseSse(response.body().source(), wireModel, handle, listener);
-            } else {
-                parseSingle(response.body().string(), wireModel, listener);
-            }
+        JsonObject payload = buildPayload(request, true);
+        boolean sentTools = payload.has("tools");
+        try {
+            executePayload(endpoint, payload, wireModel, stream, apiKey, handle, listener, sentTools, request);
         } catch (IOException e) {
             if (handle != null && handle.isCancelled()) {
                 listener.onError(new AiError(AiError.ErrorType.CANCELLED, "Generation stopped by user", 0, 0, getProviderId()));
@@ -134,7 +114,54 @@ public class GeminiProtocolAdapter implements AiProvider {
         }
     }
 
-    private JsonObject buildPayload(AiRequest request) {
+    private void executePayload(
+            String endpoint,
+            JsonObject payload,
+            String wireModel,
+            boolean stream,
+            String apiKey,
+            ExecutionHandle handle,
+            AiStreamListener listener,
+            boolean allowRetryWithoutTools,
+            AiRequest originalRequest
+    ) throws IOException {
+        Request httpRequest = new Request.Builder()
+                .url(endpoint)
+                .header("x-goog-api-key", apiKey.trim())
+                .post(RequestBody.create(payload.toString(), JSON_MEDIA))
+                .build();
+
+        Call call = client.newCall(httpRequest);
+        if (handle != null) handle.attachCall(call);
+
+        try (Response response = call.execute()) {
+            if (!response.isSuccessful()) {
+                String err = response.body() != null ? response.body().string() : "";
+                String lowerErr = err.toLowerCase(java.util.Locale.ROOT);
+                if (allowRetryWithoutTools
+                        && (response.code() == 400 || response.code() == 422)
+                        && (lowerErr.contains("tool") || lowerErr.contains("function")
+                        || lowerErr.contains("schema") || lowerErr.contains("unsupported"))) {
+                    JsonObject fallbackPayload = buildPayload(originalRequest, false);
+                    executePayload(endpoint, fallbackPayload, wireModel, stream, apiKey, handle, listener, false, originalRequest);
+                    return;
+                }
+                listener.onError(HttpErrorMapper.fromHttpResponse(response, err, getProviderId()));
+                return;
+            }
+            if (response.body() == null) {
+                listener.onError(new AiError(AiError.ErrorType.PROTOCOL_ERROR, "Empty response", response.code(), 0, getProviderId()));
+                return;
+            }
+            if (stream) {
+                parseSse(response.body().source(), wireModel, handle, listener);
+            } else {
+                parseSingle(response.body().string(), wireModel, listener);
+            }
+        }
+    }
+
+    private JsonObject buildPayload(AiRequest request, boolean includeTools) {
         JsonObject root = new JsonObject();
         if (!request.getSystemPrompt().isEmpty()) {
             JsonObject sysObj = new JsonObject();
@@ -150,7 +177,10 @@ public class GeminiProtocolAdapter implements AiProvider {
         boolean imageSupported = request.getModel().isImageSupported();
         boolean fileSupported = request.getModel().isFileSupported();
 
-        for (Message msg : request.getContextMessages()) {
+        List<Message> normalizedMessages = CompatHistory.normalizeForProvider(
+                request.getContextMessages(), getProtocolType()
+        );
+        for (Message msg : normalizedMessages) {
             JsonObject cObj = new JsonObject();
             cObj.addProperty("role", msg.getRole() == MessageRole.ASSISTANT ? "model" : "user");
             JsonArray parts = new JsonArray();
@@ -196,7 +226,8 @@ public class GeminiProtocolAdapter implements AiProvider {
             root.add("generationConfig", genConfig);
         }
 
-        if (request.getTools() != null
+        if (includeTools
+                && request.getTools() != null
                 && !request.getTools().isEmpty()
                 && request.getModel().getCapabilityStatus(ModelCapability.TOOL_CALLING) != CapabilityStatus.UNSUPPORTED) {
             JsonArray fnDeclarations = new JsonArray();

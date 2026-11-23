@@ -1,5 +1,6 @@
 package com.chatai.an.ai.tool;
 
+import com.chatai.an.ai.integration.shizuku.ShizukuIntegrationManager;
 import com.chatai.an.ai.integration.terminal.AnsiTextParser;
 import com.chatai.an.ai.integration.terminal.AppTerminalManager;
 import com.chatai.an.ai.integration.termux.TermuxIntegrationManager;
@@ -18,6 +19,7 @@ import java.util.Locale;
  * Unified Terminal execution tools supporting user-selectable backend:
  * - APP_TERMINAL: In-app /system/bin/sh workspace terminal
  * - TERMUX: External Termux RUN_COMMAND backend
+ * - SHIZUKU: Privileged ADB Shell (UID 2000) / Root (UID 0) via Shizuku UserService
  */
 public final class TerminalTools {
     private TerminalTools() {
@@ -29,14 +31,27 @@ public final class TerminalTools {
             TermuxIntegrationManager termuxManager,
             SettingsRepository settingsRepository
     ) {
-        registry.register(new TerminalRunTool(appTerminalManager, termuxManager, settingsRepository));
-        registry.register(new TerminalScriptTool(appTerminalManager, termuxManager, settingsRepository));
+        registerAll(registry, appTerminalManager, termuxManager, null, settingsRepository);
+    }
+
+    public static void registerAll(
+            ToolRegistry registry,
+            AppTerminalManager appTerminalManager,
+            TermuxIntegrationManager termuxManager,
+            ShizukuIntegrationManager shizukuManager,
+            SettingsRepository settingsRepository
+    ) {
+        registry.register(new TerminalRunTool(appTerminalManager, termuxManager, shizukuManager, settingsRepository));
+        registry.register(new TerminalScriptTool(appTerminalManager, termuxManager, shizukuManager, settingsRepository));
     }
 
     public static TerminalBackend resolveTargetBackend(JsonObject args, SettingsRepository settingsRepository) {
         String explicit = optStr(args, "backend").toLowerCase(Locale.ROOT);
         if ("termux".equals(explicit)) {
             return TerminalBackend.TERMUX;
+        }
+        if ("shizuku".equals(explicit) || "adb".equals(explicit)) {
+            return TerminalBackend.SHIZUKU;
         }
         if ("app".equals(explicit) || "app_terminal".equals(explicit)) {
             return TerminalBackend.APP_TERMINAL;
@@ -50,8 +65,8 @@ public final class TerminalTools {
     public static class TerminalRunTool implements AiTool {
         private static final ToolDefinition DEF = new ToolDefinition(
                 "terminal_run",
-                "Run a shell command in the configured terminal backend (In-App Terminal or Termux, or explicit backend='app'|'termux'). Returns exitCode, stdout, stderr, and backend.",
-                "{\"type\":\"object\",\"required\":[\"command\"],\"properties\":{\"command\":{\"type\":\"string\"},\"workdir\":{\"type\":\"string\"},\"backend\":{\"type\":\"string\",\"enum\":[\"auto\",\"app\",\"termux\"]},\"timeout_sec\":{\"type\":\"integer\"}}}",
+                "Run a shell command in the configured terminal backend (In-App Terminal, Termux, or Shizuku, or explicit backend='app'|'termux'|'shizuku'). Returns exitCode, stdout, stderr, and backend.",
+                "{\"type\":\"object\",\"required\":[\"command\"],\"properties\":{\"command\":{\"type\":\"string\"},\"workdir\":{\"type\":\"string\"},\"backend\":{\"type\":\"string\",\"enum\":[\"auto\",\"app\",\"termux\",\"shizuku\"]},\"timeout_sec\":{\"type\":\"integer\"}}}",
                 ToolPermission.REQUIRE_CONFIRMATION,
                 ToolCategory.TERMINAL,
                 true
@@ -59,6 +74,7 @@ public final class TerminalTools {
 
         private final AppTerminalManager appTerminal;
         private final TermuxIntegrationManager termux;
+        private final ShizukuIntegrationManager shizuku;
         private final SettingsRepository settingsRepository;
 
         public TerminalRunTool(
@@ -66,8 +82,18 @@ public final class TerminalTools {
                 TermuxIntegrationManager termux,
                 SettingsRepository settingsRepository
         ) {
+            this(appTerminal, termux, null, settingsRepository);
+        }
+
+        public TerminalRunTool(
+                AppTerminalManager appTerminal,
+                TermuxIntegrationManager termux,
+                ShizukuIntegrationManager shizuku,
+                SettingsRepository settingsRepository
+        ) {
             this.appTerminal = appTerminal;
             this.termux = termux;
+            this.shizuku = shizuku;
             this.settingsRepository = settingsRepository;
         }
 
@@ -87,6 +113,9 @@ public final class TerminalTools {
                 TermuxIntegrationManager.CommandResult res = termux.executeCommand(cmd, workdir, timeout);
                 return formatTermuxResult(DEF.getName(), res);
             }
+            if (backend == TerminalBackend.SHIZUKU) {
+                return executeViaShizuku(DEF.getName(), shizuku, cmd, workdir, timeout);
+            }
             AppTerminalManager.CommandResult res = appTerminal.executeCommand(cmd, workdir, timeout);
             return formatAppResult(DEF.getName(), res);
         }
@@ -95,8 +124,8 @@ public final class TerminalTools {
     public static class TerminalScriptTool implements AiTool {
         private static final ToolDefinition DEF = new ToolDefinition(
                 "terminal_script",
-                "Execute a multi-line script in the configured terminal backend (In-App sh or Termux bash/python3/node). Supports backend='auto'|'app'|'termux'.",
-                "{\"type\":\"object\",\"required\":[\"script\"],\"properties\":{\"interpreter\":{\"type\":\"string\",\"enum\":[\"sh\",\"bash\",\"python3\",\"node\"]},\"script\":{\"type\":\"string\"},\"workdir\":{\"type\":\"string\"},\"backend\":{\"type\":\"string\",\"enum\":[\"auto\",\"app\",\"termux\"]},\"timeout_sec\":{\"type\":\"integer\"}}}",
+                "Execute a multi-line script in the configured terminal backend (In-App sh, Shizuku privileged sh, or Termux bash/python3/node). Supports backend='auto'|'app'|'termux'|'shizuku'.",
+                "{\"type\":\"object\",\"required\":[\"script\"],\"properties\":{\"interpreter\":{\"type\":\"string\",\"enum\":[\"sh\",\"bash\",\"python3\",\"node\"]},\"script\":{\"type\":\"string\"},\"workdir\":{\"type\":\"string\"},\"backend\":{\"type\":\"string\",\"enum\":[\"auto\",\"app\",\"termux\",\"shizuku\"]},\"timeout_sec\":{\"type\":\"integer\"}}}",
                 ToolPermission.REQUIRE_CONFIRMATION,
                 ToolCategory.TERMINAL,
                 true
@@ -104,6 +133,7 @@ public final class TerminalTools {
 
         private final AppTerminalManager appTerminal;
         private final TermuxIntegrationManager termux;
+        private final ShizukuIntegrationManager shizuku;
         private final SettingsRepository settingsRepository;
 
         public TerminalScriptTool(
@@ -111,8 +141,18 @@ public final class TerminalTools {
                 TermuxIntegrationManager termux,
                 SettingsRepository settingsRepository
         ) {
+            this(appTerminal, termux, null, settingsRepository);
+        }
+
+        public TerminalScriptTool(
+                AppTerminalManager appTerminal,
+                TermuxIntegrationManager termux,
+                ShizukuIntegrationManager shizuku,
+                SettingsRepository settingsRepository
+        ) {
             this.appTerminal = appTerminal;
             this.termux = termux;
+            this.shizuku = shizuku;
             this.settingsRepository = settingsRepository;
         }
 
@@ -144,10 +184,40 @@ public final class TerminalTools {
             }
 
             if (!interp.isEmpty() && !"sh".equals(interp)) {
-                return new ToolResult(DEF.getName(), false, "", "In-App Terminal supports POSIX 'sh' only; switch backend to 'termux' for " + interp + ".");
+                return new ToolResult(DEF.getName(), false, "", "POSIX 'sh' only on this backend; switch backend to 'termux' for " + interp + ".");
+            }
+            if (backend == TerminalBackend.SHIZUKU) {
+                return executeViaShizuku(DEF.getName(), shizuku, script, workdir, timeout);
             }
             AppTerminalManager.CommandResult res = appTerminal.executeCommand(script, workdir, timeout);
             return formatAppResult(DEF.getName(), res);
+        }
+    }
+
+    private static ToolResult executeViaShizuku(
+            String toolName,
+            ShizukuIntegrationManager shizuku,
+            String cmd,
+            String workdir,
+            int timeout
+    ) {
+        if (shizuku == null) {
+            return new ToolResult(toolName, false, "", "Shizuku manager is unavailable.");
+        }
+        try {
+            ShizukuIntegrationManager.ShellResult res = shizuku.executeShell(cmd, workdir, timeout);
+            String priv = res.uid == 0 ? "ROOT (UID 0)" : (res.uid == 2000 ? "SHELL (UID 2000)" : "UID " + res.uid);
+            String out = "backend=SHIZUKU"
+                    + "\nprivilege=" + priv
+                    + "\nexitCode=" + res.exitCode
+                    + "\n--- stdout ---\n" + (res.stdout.isEmpty() ? "(empty)" : res.stdout)
+                    + "\n--- stderr ---\n" + (res.stderr.isEmpty() ? "(empty)" : res.stderr);
+            if (res.timedOut) {
+                return new ToolResult(toolName, false, out, "Shizuku command timed out");
+            }
+            return new ToolResult(toolName, res.exitCode == 0, out, res.exitCode == 0 ? "" : ("Command exited with code " + res.exitCode));
+        } catch (Exception e) {
+            return new ToolResult(toolName, false, "", e.getMessage());
         }
     }
 

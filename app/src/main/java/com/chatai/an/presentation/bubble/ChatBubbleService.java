@@ -16,7 +16,9 @@ import android.content.res.Configuration;
 import android.graphics.Color;
 import android.graphics.PixelFormat;
 import android.graphics.Rect;
+import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
+import android.net.Uri;
 import android.os.Build;
 import android.os.IBinder;
 import android.provider.Settings;
@@ -49,48 +51,31 @@ import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.ServiceCompat;
 import androidx.core.content.ContextCompat;
-import androidx.lifecycle.LiveData;
 import androidx.lifecycle.Observer;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.chatai.an.R;
-import com.chatai.an.ai.context.ContextManager;
-import com.chatai.an.ai.core.AiCore;
-import com.chatai.an.ai.core.ExecutionHandle;
-import com.chatai.an.ai.integration.files.WorkspaceFileManager;
-import com.chatai.an.ai.memory.ConversationCompactor;
-import com.chatai.an.ai.memory.MemoryRetrievalEngine;
-import com.chatai.an.ai.provider.AiStreamListener;
-import com.chatai.an.ai.tool.ToolExecutor;
-import com.chatai.an.ai.tool.ToolRegistry;
+import com.chatai.an.ai.core.ChatSessionCoordinator;
+import com.chatai.an.ai.integration.shizuku.ShizukuIntegrationManager;
 import com.chatai.an.app.AppContainer;
 import com.chatai.an.app.ChatAiApplication;
 import com.chatai.an.app.MainActivity;
-import com.chatai.an.core.AppExecutors;
 import com.chatai.an.core.AppLogger;
 import com.chatai.an.domain.model.AgentMode;
-import com.chatai.an.domain.model.AiError;
 import com.chatai.an.domain.model.AiModel;
-import com.chatai.an.domain.model.AiRequest;
-import com.chatai.an.domain.model.AiResponse;
-import com.chatai.an.domain.model.AppSettings;
 import com.chatai.an.domain.model.Attachment;
-import com.chatai.an.domain.model.Conversation;
 import com.chatai.an.domain.model.ExecutionState;
-import com.chatai.an.domain.model.MemoryItem;
+import com.chatai.an.domain.model.IntegrationStatus;
 import com.chatai.an.domain.model.Message;
-import com.chatai.an.domain.model.MessageRole;
 import com.chatai.an.domain.model.ThemeConfig;
 import com.chatai.an.domain.model.ThemePalette;
-import com.chatai.an.domain.model.ToolDefinition;
-import com.chatai.an.domain.repository.ConversationRepository;
-import com.chatai.an.domain.repository.MemoryRepository;
-import com.chatai.an.domain.repository.MessageRepository;
+import com.chatai.an.domain.model.ThinkingState;
 import com.chatai.an.domain.repository.ModelRepository;
 import com.chatai.an.domain.repository.SettingsRepository;
 import com.chatai.an.domain.repository.ThemeRepository;
 import com.chatai.an.presentation.chat.MessageAdapter;
+import com.chatai.an.presentation.settings.IntegrationsHubActivity;
 import com.chatai.an.theme.GradientDrawableFactory;
 import com.chatai.an.theme.ThemeApplier;
 import com.chatai.an.theme.ThemeManager;
@@ -98,12 +83,11 @@ import com.chatai.an.theme.ThemeManager;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.UUID;
+import java.util.Locale;
 
 /**
- * Messenger-style floating Chat Bubble ("Chat Head") service.
- * Provides a draggable, edge-snapping circular bubble with bottom X dismiss target
- * and an expandable floating mini-chat window powered by AnAI and shared Room history.
+ * Messenger-style floating Chat Bubble ("Chat Head") service synchronized 1:1 with
+ * MainActivity through the shared {@link ChatSessionCoordinator}.
  */
 public class ChatBubbleService extends Service {
     private static final String TAG = "ChatBubbleService";
@@ -118,7 +102,6 @@ public class ChatBubbleService extends Service {
 
     private static final String CHANNEL_ID = "chatai_bubble_channel";
     private static final int NOTIFICATION_ID = 7401;
-    private static final String STREAMING_PREVIEW_ID = "__bubble_streaming_preview__";
 
     private static volatile boolean running = false;
 
@@ -158,19 +141,11 @@ public class ChatBubbleService extends Service {
     private LayoutInflater themedInflater;
 
     private AppContainer appContainer;
-    private ConversationRepository conversationRepository;
-    private MessageRepository messageRepository;
+    private ChatSessionCoordinator coordinator;
+    private ShizukuIntegrationManager shizukuManager;
     private ModelRepository modelRepository;
     private ThemeRepository themeRepository;
     private SettingsRepository settingsRepository;
-    private MemoryRepository memoryRepository;
-    private MemoryRetrievalEngine memoryRetrievalEngine;
-    private ConversationCompactor conversationCompactor;
-    private ContextManager contextManager;
-    private AiCore aiCore;
-    private ToolRegistry toolRegistry;
-    private WorkspaceFileManager workspaceFileManager;
-    private AppExecutors executors;
 
     // Overlay Views & Params
     private View bubbleView;
@@ -197,6 +172,15 @@ public class ChatBubbleService extends Service {
     private ImageButton btnCollapse;
     private ImageButton btnClose;
     private View headerDivider;
+    private LinearLayout modeToggleGroup;
+    private TextView btnModeChat;
+    private TextView btnModeCode;
+    private LinearLayout btnShizuku;
+    private View viewShizukuDot;
+    private TextView tvShizuku;
+    private LinearLayout btnThinking;
+    private ImageView ivThinking;
+    private TextView tvThinking;
     private RecyclerView rvMessages;
     private View emptyStateView;
     private TextView tvEmptyTitle;
@@ -204,6 +188,10 @@ public class ChatBubbleService extends Service {
     private View statusBar;
     private ProgressBar pbStatus;
     private TextView tvStatus;
+    private LinearLayout queueContainer;
+    private TextView tvQueueHeader;
+    private LinearLayout queueItems;
+    private LinearLayout slashPopup;
     private View composerDivider;
     private EditText etInput;
     private ImageButton btnStop;
@@ -213,13 +201,11 @@ public class ChatBubbleService extends Service {
     private MessageAdapter messageAdapter;
     private ThemePalette activePalette;
     private AiModel currentModel;
-
-    private String currentConversationId;
-    private LiveData<List<Message>> observedMessagesLiveData;
-    private List<Message> baseMessages = Collections.emptyList();
-    private Message streamingPreview = null;
-    private volatile ExecutionHandle activeExecutionHandle;
+    private AgentMode currentAgentMode = AgentMode.CHAT;
+    private ThinkingState currentThinkingState = ThinkingState.DISABLED;
     private ExecutionState currentExecutionState = ExecutionState.IDLE;
+    private ShizukuIntegrationManager.ShizukuState currentShizukuState;
+    private List<Message> currentMessages = Collections.emptyList();
 
     private boolean isExpanded = false;
     private boolean hasUnreadReply = false;
@@ -243,8 +229,44 @@ public class ChatBubbleService extends Service {
     };
 
     private final Observer<List<Message>> messagesObserver = list -> {
-        baseMessages = list != null ? list : Collections.emptyList();
+        currentMessages = list != null ? list : Collections.emptyList();
         renderMessages();
+    };
+
+    private final Observer<AgentMode> modeObserver = mode -> {
+        currentAgentMode = mode != null ? mode : AgentMode.CHAT;
+        if (messageAdapter != null) {
+            messageAdapter.setAgentMode(currentAgentMode);
+        }
+        styleModeToggle();
+    };
+
+    private final Observer<ThinkingState> thinkingObserver = state -> {
+        currentThinkingState = state != null ? state : ThinkingState.DISABLED;
+        styleThinkingPill();
+    };
+
+    private final Observer<ExecutionState> executionStateObserver = state -> {
+        ExecutionState prev = currentExecutionState;
+        updateExecutionStatus(state, coordinator != null ? coordinator.getExecutionErrorDetail().getValue() : null);
+        if (state == ExecutionState.COMPLETED && prev != ExecutionState.COMPLETED && !isExpanded) {
+            hasUnreadReply = true;
+            updateUnreadBadge();
+        }
+    };
+
+    private final Observer<List<ChatSessionCoordinator.QueuedMessage>> queueObserver = this::renderFollowUpQueue;
+
+    private final Observer<ShizukuIntegrationManager.ShizukuState> shizukuObserver = state -> {
+        currentShizukuState = state;
+        styleShizukuPill();
+    };
+
+    private final Observer<String> noticeObserver = notice -> {
+        if (notice != null && !notice.isEmpty() && isExpanded) {
+            Toast.makeText(themedContext, notice, Toast.LENGTH_SHORT).show();
+            coordinator.clearExecutionNotice();
+        }
     };
 
     @Override
@@ -254,19 +276,11 @@ public class ChatBubbleService extends Service {
 
         ChatAiApplication app = (ChatAiApplication) getApplication();
         appContainer = app.getAppContainer();
-        conversationRepository = appContainer.getConversationRepository();
-        messageRepository = appContainer.getMessageRepository();
+        coordinator = appContainer.getChatSessionCoordinator();
+        shizukuManager = appContainer.getShizukuIntegrationManager();
         modelRepository = appContainer.getModelRepository();
         themeRepository = appContainer.getThemeRepository();
         settingsRepository = appContainer.getSettingsRepository();
-        memoryRepository = appContainer.getMemoryRepository();
-        memoryRetrievalEngine = appContainer.getMemoryRetrievalEngine();
-        conversationCompactor = appContainer.getConversationCompactor();
-        contextManager = appContainer.getContextManager();
-        aiCore = appContainer.getAiCore();
-        toolRegistry = appContainer.getToolRegistry();
-        workspaceFileManager = appContainer.getWorkspaceFileManager();
-        executors = appContainer.getExecutors();
 
         windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
         themedContext = new ContextThemeWrapper(this, R.style.Theme_ChatAI);
@@ -284,7 +298,14 @@ public class ChatBubbleService extends Service {
         initPopupOverlay();
 
         themeRepository.observeActiveTheme().observeForever(themeObserver);
-        modelRepository.observeSelectedModel().observeForever(modelObserver);
+        coordinator.getSelectedModel().observeForever(modelObserver);
+        coordinator.getMessages().observeForever(messagesObserver);
+        coordinator.getAgentMode().observeForever(modeObserver);
+        coordinator.getThinkingState().observeForever(thinkingObserver);
+        coordinator.getExecutionState().observeForever(executionStateObserver);
+        coordinator.getFollowUpQueue().observeForever(queueObserver);
+        coordinator.getExecutionNotice().observeForever(noticeObserver);
+        shizukuManager.observeState().observeForever(shizukuObserver);
     }
 
     @Override
@@ -305,8 +326,11 @@ public class ChatBubbleService extends Service {
 
         if (intent != null && intent.hasExtra(EXTRA_CONVERSATION_ID)) {
             String incomingConvId = intent.getStringExtra(EXTRA_CONVERSATION_ID);
-            if (incomingConvId != null && !incomingConvId.isEmpty() && !incomingConvId.equals(currentConversationId)) {
-                bindConversation(incomingConvId);
+            String currentActiveId = coordinator.getActiveConversationId().getValue();
+            if (incomingConvId != null && !incomingConvId.isEmpty()
+                    && !incomingConvId.equals(currentActiveId)
+                    && !coordinator.isAiBusy()) {
+                coordinator.openConversation(incomingConvId);
             }
         }
 
@@ -354,30 +378,28 @@ public class ChatBubbleService extends Service {
             snapAnimator.cancel();
             snapAnimator = null;
         }
-        if (activeExecutionHandle != null) {
-            activeExecutionHandle.cancel();
-            activeExecutionHandle = null;
-        }
-        try {
-            themeRepository.observeActiveTheme().removeObserver(themeObserver);
-        } catch (Exception ignored) {
-        }
-        try {
-            modelRepository.observeSelectedModel().removeObserver(modelObserver);
-        } catch (Exception ignored) {
-        }
-        if (observedMessagesLiveData != null) {
-            try {
-                observedMessagesLiveData.removeObserver(messagesObserver);
-            } catch (Exception ignored) {
-            }
-            observedMessagesLiveData = null;
-        }
+        removeObserverSafely(themeRepository.observeActiveTheme(), themeObserver);
+        removeObserverSafely(coordinator.getSelectedModel(), modelObserver);
+        removeObserverSafely(coordinator.getMessages(), messagesObserver);
+        removeObserverSafely(coordinator.getAgentMode(), modeObserver);
+        removeObserverSafely(coordinator.getThinkingState(), thinkingObserver);
+        removeObserverSafely(coordinator.getExecutionState(), executionStateObserver);
+        removeObserverSafely(coordinator.getFollowUpQueue(), queueObserver);
+        removeObserverSafely(coordinator.getExecutionNotice(), noticeObserver);
+        removeObserverSafely(shizukuManager.observeState(), shizukuObserver);
 
         removeViewSafely(popupView);
         removeViewSafely(bubbleView);
         removeViewSafely(dismissView);
         super.onDestroy();
+    }
+
+    private <T> void removeObserverSafely(@Nullable androidx.lifecycle.LiveData<T> liveData, Observer<T> observer) {
+        if (liveData == null || observer == null) return;
+        try {
+            liveData.removeObserver(observer);
+        } catch (Exception ignored) {
+        }
     }
 
     private void createNotificationChannel() {
@@ -595,6 +617,17 @@ public class ChatBubbleService extends Service {
         btnCollapse = popupView.findViewById(R.id.btn_bubble_collapse);
         btnClose = popupView.findViewById(R.id.btn_bubble_close);
         headerDivider = popupView.findViewById(R.id.bubble_header_divider);
+
+        modeToggleGroup = popupView.findViewById(R.id.bubble_mode_toggle);
+        btnModeChat = popupView.findViewById(R.id.btn_bubble_mode_chat);
+        btnModeCode = popupView.findViewById(R.id.btn_bubble_mode_code);
+        btnShizuku = popupView.findViewById(R.id.btn_bubble_shizuku);
+        viewShizukuDot = popupView.findViewById(R.id.view_bubble_shizuku_dot);
+        tvShizuku = popupView.findViewById(R.id.tv_bubble_shizuku);
+        btnThinking = popupView.findViewById(R.id.btn_bubble_thinking);
+        ivThinking = popupView.findViewById(R.id.iv_bubble_thinking);
+        tvThinking = popupView.findViewById(R.id.tv_bubble_thinking);
+
         rvMessages = popupView.findViewById(R.id.rv_bubble_messages);
         emptyStateView = popupView.findViewById(R.id.bubble_empty_state);
         tvEmptyTitle = popupView.findViewById(R.id.tv_bubble_empty_title);
@@ -602,6 +635,10 @@ public class ChatBubbleService extends Service {
         statusBar = popupView.findViewById(R.id.bubble_status_bar);
         pbStatus = popupView.findViewById(R.id.pb_bubble_status);
         tvStatus = popupView.findViewById(R.id.tv_bubble_status);
+        queueContainer = popupView.findViewById(R.id.ll_bubble_queue_container);
+        tvQueueHeader = popupView.findViewById(R.id.tv_bubble_queue_header);
+        queueItems = popupView.findViewById(R.id.ll_bubble_queue_items);
+        slashPopup = popupView.findViewById(R.id.ll_bubble_slash_popup);
         composerDivider = popupView.findViewById(R.id.bubble_composer_divider);
         etInput = popupView.findViewById(R.id.et_bubble_input);
         btnStop = popupView.findViewById(R.id.btn_bubble_stop);
@@ -620,8 +657,8 @@ public class ChatBubbleService extends Service {
 
             @Override
             public void onDeleteMessage(Message message) {
-                if (message != null && currentConversationId != null) {
-                    messageRepository.deleteMessage(message.getId(), currentConversationId);
+                if (message != null) {
+                    coordinator.deleteMessage(message.getId());
                 }
             }
 
@@ -634,6 +671,66 @@ public class ChatBubbleService extends Service {
             public void onPreviewAttachment(Attachment attachment) {
                 openFullApp();
             }
+
+            @Override
+            public void onRegenerateMessage(Message message) {
+                coordinator.regenerateMessage(message);
+            }
+
+            @Override
+            public void onHandoverToCode(Message message) {
+                coordinator.handoverToCode(null);
+            }
+
+            @Override
+            public void onFollowUpClicked(String suggestion) {
+                coordinator.sendOrQueueMessage(suggestion);
+            }
+
+            @Override
+            public void onApproveToolCall(String executionId, boolean allowForSession) {
+                coordinator.respondToToolConfirmation(executionId, true, allowForSession);
+            }
+
+            @Override
+            public void onDenyToolCall(String executionId) {
+                coordinator.respondToToolConfirmation(executionId, false, false);
+            }
+
+            @Override
+            public void onCopyToolOutput(String text) {
+                copyToClipboard(text);
+            }
+
+            @Override
+            public void onPreviewImage(String title, String imageSource) {
+                if (imageSource != null && (imageSource.startsWith("http://") || imageSource.startsWith("https://"))) {
+                    try {
+                        Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(imageSource));
+                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                        startActivity(intent);
+                        return;
+                    } catch (Exception ignored) {
+                    }
+                }
+                openFullApp();
+            }
+
+            @Override
+            public void onOpenSourceUrl(String urlOrPath) {
+                if (urlOrPath == null || urlOrPath.trim().isEmpty()) return;
+                String target = urlOrPath.trim();
+                if (target.startsWith("http://") || target.startsWith("https://")) {
+                    try {
+                        Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(target));
+                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                        startActivity(intent);
+                        return;
+                    } catch (Exception ignored) {
+                    }
+                }
+                copyToClipboard(target);
+            }
         });
 
         LinearLayoutManager lm = new LinearLayoutManager(themedContext);
@@ -641,7 +738,7 @@ public class ChatBubbleService extends Service {
         rvMessages.setLayoutManager(lm);
         rvMessages.setAdapter(messageAdapter);
 
-        btnNewChat.setOnClickListener(v -> startNewConversation());
+        btnNewChat.setOnClickListener(v -> coordinator.startNewChat());
         btnOpenApp.setOnClickListener(v -> openFullApp());
         btnCollapse.setOnClickListener(v -> collapsePopup());
         btnClose.setOnClickListener(v -> {
@@ -650,7 +747,12 @@ public class ChatBubbleService extends Service {
             stopSelf();
         });
 
-        btnStop.setOnClickListener(v -> stopGeneration());
+        btnModeChat.setOnClickListener(v -> coordinator.setAgentMode(AgentMode.CHAT));
+        btnModeCode.setOnClickListener(v -> coordinator.setAgentMode(AgentMode.CODING));
+        btnThinking.setOnClickListener(v -> coordinator.toggleDeepThinking());
+        btnShizuku.setOnClickListener(v -> handleBubbleShizukuTap());
+
+        btnStop.setOnClickListener(v -> coordinator.stopGeneration());
         btnSend.setOnClickListener(v -> sendBubbleMessage());
         etInput.setOnEditorActionListener((v, actionId, event) -> {
             if (actionId == EditorInfo.IME_ACTION_SEND) {
@@ -667,6 +769,7 @@ public class ChatBubbleService extends Service {
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
                 updateSendButtonState();
+                updateBubbleSlashPopup(s != null ? s.toString() : "");
             }
 
             @Override
@@ -687,14 +790,126 @@ public class ChatBubbleService extends Service {
         updatePopupDimensions();
     }
 
+    private void handleBubbleShizukuTap() {
+        ShizukuIntegrationManager.QuickActionOutcome outcome = shizukuManager.requestOrConnect(themedContext);
+        if (outcome == ShizukuIntegrationManager.QuickActionOutcome.SHOW_RATIONALE_NEEDED
+                || outcome == ShizukuIntegrationManager.QuickActionOutcome.ALREADY_ACTIVE) {
+            collapsePopup();
+            Intent hubIntent = new Intent(this, IntegrationsHubActivity.class);
+            hubIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            startActivity(hubIntent);
+        } else if (outcome == ShizukuIntegrationManager.QuickActionOutcome.PERMISSION_REQUESTED) {
+            Toast.makeText(themedContext, R.string.hub_shizuku_perm, Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void updateBubbleSlashPopup(String rawInput) {
+        if (slashPopup == null) return;
+        String trimmed = rawInput != null ? rawInput.trim() : "";
+        if (!trimmed.startsWith("/") || trimmed.contains("\n") || trimmed.contains(" ")) {
+            slashPopup.setVisibility(View.GONE);
+            slashPopup.removeAllViews();
+            return;
+        }
+        String query = trimmed.toLowerCase(Locale.ROOT);
+        List<String[]> cmds = new ArrayList<>();
+        cmds.add(new String[]{"/code", getString(R.string.slash_cmd_code_desc)});
+        cmds.add(new String[]{"/chat", getString(R.string.slash_cmd_chat_desc)});
+        cmds.add(new String[]{"/shizuku", getString(R.string.slash_cmd_shizuku_desc)});
+        cmds.add(new String[]{"/compact", getString(R.string.context_compact_now)});
+        cmds.add(new String[]{"/new", getString(R.string.slash_cmd_new_desc)});
+        cmds.add(new String[]{"/clear", getString(R.string.slash_cmd_clear_desc)});
+
+        slashPopup.removeAllViews();
+        int matches = 0;
+        for (String[] cmd : cmds) {
+            if (!cmd[0].startsWith(query)) continue;
+            matches++;
+            LinearLayout row = new LinearLayout(themedContext);
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            row.setPadding(
+                    ThemeApplier.dpToPxInt(themedContext, 8f),
+                    ThemeApplier.dpToPxInt(themedContext, 6f),
+                    ThemeApplier.dpToPxInt(themedContext, 8f),
+                    ThemeApplier.dpToPxInt(themedContext, 6f)
+            );
+            row.setClickable(true);
+            row.setFocusable(true);
+            row.setBackgroundResource(android.R.drawable.list_selector_background);
+
+            TextView tvCmd = new TextView(themedContext);
+            tvCmd.setText(cmd[0]);
+            tvCmd.setTextSize(11.5f);
+            tvCmd.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
+            if (activePalette != null) tvCmd.setTextColor(activePalette.getPrimaryColor());
+
+            TextView tvDesc = new TextView(themedContext);
+            tvDesc.setText(" · " + cmd[1]);
+            tvDesc.setTextSize(11f);
+            if (activePalette != null) tvDesc.setTextColor(activePalette.getTextSecondaryColor());
+
+            row.addView(tvCmd);
+            row.addView(tvDesc);
+            final String chosen = cmd[0];
+            row.setOnClickListener(v -> {
+                slashPopup.setVisibility(View.GONE);
+                etInput.setText("");
+                if ("/shizuku".equals(chosen)) {
+                    handleBubbleShizukuTap();
+                } else {
+                    coordinator.sendOrQueueMessage(chosen);
+                }
+            });
+            slashPopup.addView(row);
+        }
+        slashPopup.setVisibility(matches > 0 ? View.VISIBLE : View.GONE);
+    }
+
+    private void renderFollowUpQueue(List<ChatSessionCoordinator.QueuedMessage> queue) {
+        if (queueContainer == null || queueItems == null) return;
+        queueItems.removeAllViews();
+        if (queue == null || queue.isEmpty()) {
+            queueContainer.setVisibility(View.GONE);
+            return;
+        }
+        queueContainer.setVisibility(View.VISIBLE);
+        tvQueueHeader.setText(getString(R.string.queue_header_title, queue.size()));
+        for (ChatSessionCoordinator.QueuedMessage item : queue) {
+            View row = themedInflater.inflate(R.layout.item_queued_message, queueItems, false);
+            TextView tvText = row.findViewById(R.id.tv_queued_text);
+            TextView btnSendNow = row.findViewById(R.id.btn_queued_send_now);
+            View btnRemove = row.findViewById(R.id.btn_queued_remove);
+
+            tvText.setText(!item.text.isEmpty() ? item.text : "(" + item.attachments.size() + " attachment)");
+            if (activePalette != null) {
+                row.setBackground(GradientDrawableFactory.createSurfaceCard(
+                        activePalette.getSurfaceColor(),
+                        ThemeApplier.blendWithAlpha(activePalette.getBorderColor(), 110),
+                        ThemeApplier.dpToPxInt(themedContext, 0.75f),
+                        ThemeApplier.dpToPx(themedContext, 10f)
+                ));
+                tvText.setTextColor(activePalette.getTextPrimaryColor());
+                btnSendNow.setBackground(GradientDrawableFactory.createPill(
+                        ThemeApplier.blendWithAlpha(activePalette.getPrimaryColor(), 24),
+                        activePalette.getPrimaryColor(),
+                        ThemeApplier.dpToPxInt(themedContext, 1f)
+                ));
+                btnSendNow.setTextColor(activePalette.getPrimaryColor());
+            }
+            btnSendNow.setOnClickListener(v -> coordinator.sendQueuedFollowUpNow(item.id));
+            btnRemove.setOnClickListener(v -> coordinator.removeQueuedFollowUp(item.id));
+            queueItems.addView(row);
+        }
+    }
+
     private void updatePopupDimensions() {
         int maxPopupWidth = ThemeApplier.dpToPxInt(themedContext, 440f);
         popupParams.width = Math.min((int) (screenWidth * 0.94f), maxPopupWidth);
         popupParams.y = statusBarHeight + ThemeApplier.dpToPxInt(themedContext, 12f);
 
         int desiredCardHeight = Math.min(
-                ThemeApplier.dpToPxInt(themedContext, 460f),
-                Math.max(ThemeApplier.dpToPxInt(themedContext, 300f), (int) (screenHeight * 0.56f))
+                ThemeApplier.dpToPxInt(themedContext, 500f),
+                Math.max(ThemeApplier.dpToPxInt(themedContext, 320f), (int) (screenHeight * 0.62f))
         );
         ViewGroup.LayoutParams cardLp = popupCard.getLayoutParams();
         if (cardLp != null) {
@@ -710,6 +925,7 @@ public class ChatBubbleService extends Service {
         updateUnreadBadge();
         updateScreenBounds();
         updatePopupDimensions();
+        shizukuManager.refreshState();
 
         if (bubbleView != null) {
             bubbleView.setVisibility(View.GONE);
@@ -838,34 +1054,13 @@ public class ChatBubbleService extends Service {
         snapAnimator.start();
     }
 
-    private void bindConversation(@Nullable String convId) {
-        if (observedMessagesLiveData != null) {
-            observedMessagesLiveData.removeObserver(messagesObserver);
-            observedMessagesLiveData = null;
-        }
-        currentConversationId = convId;
-        baseMessages = Collections.emptyList();
-        streamingPreview = null;
-        if (convId != null && !convId.isEmpty()) {
-            observedMessagesLiveData = messageRepository.observeMessages(convId);
-            observedMessagesLiveData.observeForever(messagesObserver);
-        } else {
-            renderMessages();
-        }
-    }
-
-    private void startNewConversation() {
-        stopGeneration();
-        bindConversation(null);
-        updateExecutionStatus(ExecutionState.IDLE, null);
-    }
-
     private void openFullApp() {
         collapsePopup();
         Intent intent = new Intent(this, MainActivity.class);
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
-        if (currentConversationId != null && !currentConversationId.isEmpty()) {
-            intent.putExtra(MainActivity.EXTRA_OPEN_CONVERSATION_ID, currentConversationId);
+        String activeConvId = coordinator.getActiveConversationId().getValue();
+        if (activeConvId != null && !activeConvId.isEmpty()) {
+            intent.putExtra(MainActivity.EXTRA_OPEN_CONVERSATION_ID, activeConvId);
         }
         startActivity(intent);
     }
@@ -875,247 +1070,22 @@ public class ChatBubbleService extends Service {
         String trimmed = etInput.getText() != null ? etInput.getText().toString().trim() : "";
         if (trimmed.isEmpty()) return;
         etInput.setText("");
-
-        if (activeExecutionHandle != null) {
-            activeExecutionHandle.cancel();
-            activeExecutionHandle = null;
+        if ("/shizuku".equalsIgnoreCase(trimmed)) {
+            handleBubbleShizukuTap();
+            return;
         }
-
-        AiModel model = currentModel != null ? currentModel : modelRepository.getSelectedModelSnapshot();
-        AppSettings appSettings = settingsRepository.getSettingsSnapshot();
-        boolean deepThinking = appSettings.isDeepThinkingPreferred() && model.isDeepThinkingSupported();
-
-        if (currentConversationId == null || currentConversationId.isEmpty()) {
-            String newId = UUID.randomUUID().toString();
-            bindConversation(newId);
-        }
-        final String targetConvId = currentConversationId;
-
-        updateExecutionStatus(ExecutionState.PREPARING, null);
-        messageRepository.sendUserMessage(
-                targetConvId,
-                trimmed,
-                model.getId(),
-                deepThinking,
-                Collections.emptyList(),
-                appSettings.isAutoTitleFromFirstMessage(),
-                savedUser -> startAiGeneration(targetConvId, trimmed, model, deepThinking)
-        );
-    }
-
-    private void startAiGeneration(String convId, String latestPrompt, AiModel model, boolean deepThinking) {
-        executors.worker().execute(() -> {
-            Conversation conversation = conversationRepository.getConversationSync(convId);
-            String projectId = conversation != null ? conversation.getProjectId() : "";
-            List<Message> history = messageRepository.getMessagesSync(convId);
-
-            if (conversation != null && conversationCompactor != null) {
-                conversation = conversationCompactor.compactIfNeededSync(conversation, model, history);
-            }
-
-            List<MemoryItem> selectedMemories = memoryRetrievalEngine != null
-                    ? memoryRetrievalEngine.selectContextualMemories(latestPrompt, projectId, convId, 750, 10)
-                    : memoryRepository.getActiveMemoriesForConversationSync(convId);
-
-            AppSettings currentSettings = settingsRepository.getSettingsSnapshot();
-            AgentMode mode = currentSettings.getDefaultAgentMode();
-            String workspacePath = workspaceFileManager != null
-                    ? workspaceFileManager.getActiveWorkspacePath()
-                    : currentSettings.getActiveWorkspacePath();
-            List<ToolDefinition> enabledTools = (currentSettings.isChatToolsEnabled() && toolRegistry != null)
-                    ? toolRegistry.listDefinitionsForMode(mode, currentSettings)
-                    : Collections.emptyList();
-
-            AiRequest request = contextManager.buildRequest(
-                    conversation,
-                    convId,
-                    model,
-                    history,
-                    selectedMemories,
-                    true,
-                    deepThinking,
-                    null,
-                    mode,
-                    workspacePath,
-                    enabledTools
-            );
-
-            final StringBuilder streamText = new StringBuilder();
-            final StringBuilder streamThinking = new StringBuilder();
-            final long startTime = System.currentTimeMillis();
-
-            executors.postToMain(() -> {
-                streamingPreview = new Message(
-                        STREAMING_PREVIEW_ID,
-                        convId,
-                        MessageRole.ASSISTANT,
-                        "",
-                        "",
-                        model.getId(),
-                        model.getProvider().getId(),
-                        model.getAccessType(),
-                        deepThinking,
-                        null,
-                        false,
-                        startTime,
-                        startTime,
-                        Collections.emptyList()
-                );
-                renderMessages();
-            });
-
-            ToolExecutor.ConfirmationHandler confirmHandler = (executionId, toolName, reason, argsPreview, callback) -> {
-                if (callback != null) callback.onResult(false);
-            };
-
-            activeExecutionHandle = aiCore.executeAsync(
-                    request,
-                    projectId,
-                    currentSettings.getAgentMaxSteps(),
-                    confirmHandler,
-                    new AiStreamListener() {
-                        @Override
-                        public void onStateChanged(ExecutionState state) {
-                            executors.postToMain(() -> updateExecutionStatus(state, null));
-                        }
-
-                        @Override
-                        public void onThinkingDelta(String delta) {
-                            if (delta == null) return;
-                            streamThinking.append(delta);
-                            postStreamPreview(convId, model, deepThinking, streamText.toString(), streamThinking.toString(), startTime);
-                        }
-
-                        @Override
-                        public void onTextDelta(String delta) {
-                            if (delta == null) return;
-                            streamText.append(delta);
-                            postStreamPreview(convId, model, deepThinking, streamText.toString(), streamThinking.toString(), startTime);
-                        }
-
-                        @Override
-                        public void onCompleted(AiResponse response) {
-                            activeExecutionHandle = null;
-                            String rawContent = response.getContent().isEmpty() ? streamText.toString() : response.getContent();
-                            String finalContent = AiCore.stripToolTags(rawContent);
-                            String finalThinking = response.getThinkingContent().isEmpty() ? streamThinking.toString() : response.getThinkingContent();
-                            String usedProviderId = response.getProviderId() != null ? response.getProviderId() : model.getProvider().getId();
-
-                            messageRepository.saveAssistantMessage(
-                                    convId,
-                                    finalContent,
-                                    finalThinking,
-                                    model.getId(),
-                                    usedProviderId,
-                                    model.getAccessType(),
-                                    response.getTokenUsage(),
-                                    false,
-                                    saved -> executors.postToMain(() -> {
-                                        streamingPreview = null;
-                                        renderMessages();
-                                        updateExecutionStatus(ExecutionState.COMPLETED, null);
-                                        if (!isExpanded) {
-                                            hasUnreadReply = true;
-                                            updateUnreadBadge();
-                                        }
-                                    })
-                            );
-                        }
-
-                        @Override
-                        public void onError(AiError error) {
-                            activeExecutionHandle = null;
-                            if (error != null && error.getType() == AiError.ErrorType.CANCELLED) {
-                                executors.postToMain(() -> {
-                                    streamingPreview = null;
-                                    renderMessages();
-                                    updateExecutionStatus(ExecutionState.CANCELLED, null);
-                                });
-                                return;
-                            }
-                            String errMsg = error != null && error.getMessage() != null
-                                    ? error.getMessage()
-                                    : getString(R.string.execution_state_failed);
-                            messageRepository.saveAssistantMessage(
-                                    convId,
-                                    "**" + model.getProvider().getDisplayName() + " error:** " + errMsg,
-                                    streamThinking.toString(),
-                                    model.getId(),
-                                    model.getProvider().getId(),
-                                    model.getAccessType(),
-                                    null,
-                                    true,
-                                    saved -> executors.postToMain(() -> {
-                                        streamingPreview = null;
-                                        renderMessages();
-                                        updateExecutionStatus(ExecutionState.FAILED, errMsg);
-                                    })
-                            );
-                        }
-                    },
-                    notice -> {
-                        if (notice != null && !notice.isEmpty()) {
-                            executors.postToMain(() -> Toast.makeText(themedContext, notice, Toast.LENGTH_SHORT).show());
-                        }
-                    }
-            );
-        });
-    }
-
-    private void postStreamPreview(
-            String convId,
-            AiModel model,
-            boolean deepThinking,
-            String content,
-            String thinking,
-            long startTime
-    ) {
-        executors.postToMain(() -> {
-            if (!convId.equals(currentConversationId)) return;
-            streamingPreview = new Message(
-                    STREAMING_PREVIEW_ID,
-                    convId,
-                    MessageRole.ASSISTANT,
-                    content,
-                    thinking,
-                    model.getId(),
-                    model.getProvider().getId(),
-                    model.getAccessType(),
-                    deepThinking,
-                    null,
-                    false,
-                    startTime,
-                    System.currentTimeMillis(),
-                    Collections.emptyList()
-            );
-            renderMessages();
-        });
-    }
-
-    private void stopGeneration() {
-        ExecutionHandle handle = activeExecutionHandle;
-        if (handle != null) {
-            handle.cancel();
-            activeExecutionHandle = null;
-            streamingPreview = null;
-            renderMessages();
-            updateExecutionStatus(ExecutionState.CANCELLED, null);
-        }
+        coordinator.sendOrQueueMessage(trimmed);
     }
 
     private void renderMessages() {
-        List<Message> combined = new ArrayList<>(baseMessages);
-        if (streamingPreview != null && currentConversationId != null
-                && currentConversationId.equals(streamingPreview.getConversationId())) {
-            combined.add(streamingPreview);
-        }
-        messageAdapter.submitList(combined);
-        boolean hasMsgs = !combined.isEmpty();
+        if (messageAdapter == null) return;
+        messageAdapter.submitList(currentMessages);
+        boolean hasMsgs = currentMessages != null && !currentMessages.isEmpty();
         if (rvMessages != null && emptyStateView != null) {
             rvMessages.setVisibility(hasMsgs ? View.VISIBLE : View.GONE);
             emptyStateView.setVisibility(hasMsgs ? View.GONE : View.VISIBLE);
             if (hasMsgs) {
-                rvMessages.scrollToPosition(combined.size() - 1);
+                rvMessages.scrollToPosition(currentMessages.size() - 1);
             }
         }
     }
@@ -1128,8 +1098,15 @@ public class ChatBubbleService extends Service {
                 || currentExecutionState == ExecutionState.STREAMING
                 || currentExecutionState == ExecutionState.EXECUTING_TOOL;
 
+        if (messageAdapter != null) messageAdapter.setAiBusy(active);
         if (btnStop != null) btnStop.setVisibility(active ? View.VISIBLE : View.GONE);
-        if (btnSend != null) btnSend.setVisibility(active ? View.GONE : View.VISIBLE);
+        if (btnSend != null) {
+            btnSend.setVisibility(View.VISIBLE);
+            btnSend.setContentDescription(getString(active ? R.string.cd_queue_send : R.string.cd_send));
+        }
+        if (etInput != null) {
+            etInput.setHint(active ? R.string.composer_queue_hint : R.string.bubble_input_hint);
+        }
 
         if (statusBar != null) {
             boolean showBar = currentExecutionState != ExecutionState.IDLE && currentExecutionState != ExecutionState.COMPLETED;
@@ -1163,7 +1140,8 @@ public class ChatBubbleService extends Service {
         String modelName = currentModel != null ? currentModel.getName() : "AnAI";
         if (currentExecutionState == ExecutionState.STREAMING
                 || currentExecutionState == ExecutionState.THINKING
-                || currentExecutionState == ExecutionState.CONNECTING) {
+                || currentExecutionState == ExecutionState.CONNECTING
+                || currentExecutionState == ExecutionState.EXECUTING_TOOL) {
             tvPopupSubtitle.setText(modelName + " • " + getString(R.string.execution_state_streaming));
         } else {
             tvPopupSubtitle.setText(modelName);
@@ -1173,6 +1151,82 @@ public class ChatBubbleService extends Service {
     private void updateUnreadBadge() {
         if (viewBubbleBadge == null) return;
         viewBubbleBadge.setVisibility(hasUnreadReply ? View.VISIBLE : View.GONE);
+    }
+
+    private void styleModeToggle() {
+        if (activePalette == null || modeToggleGroup == null) return;
+        int stroke = ThemeApplier.dpToPxInt(themedContext, 1f);
+        modeToggleGroup.setBackground(GradientDrawableFactory.createPill(
+                activePalette.getSurfaceVariantColor(),
+                activePalette.getBorderColor(),
+                stroke
+        ));
+        if (currentAgentMode == AgentMode.CODING) {
+            btnModeCode.setBackground(GradientDrawableFactory.createLinearGradient(activePalette, 999f));
+            btnModeCode.setTextColor(activePalette.getOnPrimaryColor());
+            btnModeChat.setBackground(null);
+            btnModeChat.setTextColor(activePalette.getTextSecondaryColor());
+        } else {
+            btnModeChat.setBackground(GradientDrawableFactory.createLinearGradient(activePalette, 999f));
+            btnModeChat.setTextColor(activePalette.getOnPrimaryColor());
+            btnModeCode.setBackground(null);
+            btnModeCode.setTextColor(activePalette.getTextSecondaryColor());
+        }
+    }
+
+    private void styleShizukuPill() {
+        if (tvShizuku == null || btnShizuku == null) return;
+        ShizukuIntegrationManager.ShizukuState s = currentShizukuState != null ? currentShizukuState : shizukuManager.inspectState();
+        tvShizuku.setText(shizukuManager.getShortStatusBadge());
+
+        int supported = ContextCompat.getColor(themedContext, R.color.status_supported);
+        int pending = ContextCompat.getColor(themedContext, R.color.status_unknown);
+        int unsupported = ContextCompat.getColor(themedContext, R.color.status_unsupported);
+        int neutral = activePalette != null ? activePalette.getTextSecondaryColor() : 0xFF6B5B53;
+
+        int stateColor = neutral;
+        if (s.status == IntegrationStatus.ACTIVE || s.status == IntegrationStatus.CONNECTED) {
+            stateColor = supported;
+        } else if (s.status == IntegrationStatus.PERMISSION_REQUIRED) {
+            stateColor = pending;
+        } else if (s.status == IntegrationStatus.NOT_CONNECTED || s.status == IntegrationStatus.ERROR) {
+            stateColor = unsupported;
+        }
+
+        viewShizukuDot.setBackground(GradientDrawableFactory.createPill(stateColor, 0, 0));
+        if (activePalette != null) {
+            btnShizuku.setBackground(GradientDrawableFactory.createPill(
+                    ThemeApplier.blendWithAlpha(stateColor, 20),
+                    ThemeApplier.blendWithAlpha(stateColor, 90),
+                    ThemeApplier.dpToPxInt(themedContext, 1f)
+            ));
+            tvShizuku.setTextColor(activePalette.getTextPrimaryColor());
+        }
+    }
+
+    private void styleThinkingPill() {
+        if (activePalette == null || btnThinking == null) return;
+        int stroke = ThemeApplier.dpToPxInt(themedContext, 1f);
+        if (currentThinkingState == ThinkingState.ENABLED) {
+            btnThinking.setBackground(GradientDrawableFactory.createLinearGradient(activePalette, 999f));
+            ivThinking.setColorFilter(activePalette.getOnPrimaryColor());
+            tvThinking.setTextColor(activePalette.getOnPrimaryColor());
+            btnThinking.setAlpha(1.0f);
+        } else if (currentThinkingState == ThinkingState.UNSUPPORTED) {
+            btnThinking.setBackground(GradientDrawableFactory.createPill(
+                    activePalette.getSurfaceVariantColor(), activePalette.getBorderColor(), stroke
+            ));
+            ivThinking.setColorFilter(activePalette.getTextSecondaryColor());
+            tvThinking.setTextColor(activePalette.getTextSecondaryColor());
+            btnThinking.setAlpha(0.45f);
+        } else {
+            btnThinking.setBackground(GradientDrawableFactory.createPill(
+                    activePalette.getSurfaceVariantColor(), activePalette.getBorderColor(), stroke
+            ));
+            ivThinking.setColorFilter(activePalette.getTextPrimaryColor());
+            tvThinking.setTextColor(activePalette.getTextPrimaryColor());
+            btnThinking.setAlpha(1.0f);
+        }
     }
 
     private void applyTheme() {
@@ -1229,6 +1283,24 @@ public class ChatBubbleService extends Service {
         }
         if (tvStatus != null) tvStatus.setTextColor(activePalette.getPrimaryColor());
 
+        if (queueContainer != null) {
+            queueContainer.setBackground(GradientDrawableFactory.createSurfaceCard(
+                    activePalette.getSurfaceVariantColor(),
+                    activePalette.getBorderColor(),
+                    ThemeApplier.dpToPxInt(themedContext, 1f),
+                    ThemeApplier.dpToPx(themedContext, 12f)
+            ));
+        }
+        if (tvQueueHeader != null) tvQueueHeader.setTextColor(activePalette.getTextPrimaryColor());
+        if (slashPopup != null) {
+            slashPopup.setBackground(GradientDrawableFactory.createSurfaceCard(
+                    activePalette.getSurfaceColor(),
+                    activePalette.getBorderColor(),
+                    ThemeApplier.dpToPxInt(themedContext, 1f),
+                    ThemeApplier.dpToPx(themedContext, 12f)
+            ));
+        }
+
         if (etInput != null) {
             etInput.setTextColor(activePalette.getTextPrimaryColor());
             etInput.setHintTextColor(activePalette.getTextSecondaryColor());
@@ -1243,6 +1315,9 @@ public class ChatBubbleService extends Service {
         if (messageAdapter != null) {
             messageAdapter.setPalette(activePalette);
         }
+        styleModeToggle();
+        styleShizukuPill();
+        styleThinkingPill();
         updateSendButtonState();
     }
 
