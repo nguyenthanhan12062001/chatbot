@@ -90,8 +90,19 @@ cd chatbot
 
 ### Release Build
 
-The release APK is signed with `release-key.jks` (included in the project).  
-Keystore password: `Minhthu2103@` | Key alias: `release` | Key password: `Minhthu2103@`
+The release APK is signed with a keystore kept locally in the project (`release-key.jks`).  
+Configure your own signing in `app/build.gradle.kts` before building release:
+
+```kotlin
+signingConfigs {
+    create("release") {
+        storeFile = file("${rootDir}/release-key.jks")
+        storePassword = System.getenv("STORE_PASSWORD") ?: "your_store_password"
+        keyAlias = "release"
+        keyPassword = System.getenv("KEY_PASSWORD") ?: "your_key_password"
+    }
+}
+```
 
 ```bash
 ./gradlew assembleRelease
