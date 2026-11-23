@@ -37,9 +37,9 @@ A modular Android chat application that connects to multiple AI providers (Googl
 
 - **Multi-Model AI Chat**: Google Gemini, OpenRouter (free), Pollinations (keyless), Kilo, and local models
 - **Agent Mode**: Multi-step planning, tool execution, and user confirmation
-- **Tool Platform**: File system, terminal, internet download, ADB/Shizuku integration
-- **Wireless ADB Debugging**: Built-in ChatAI Server for remote debugging
-- **Shizuku & Termux**: Privileged shell access and background command execution
+- **Tool Platform**: File system, terminal, internet download, ADB integration
+- **Wireless ADB**: Wireless debugging bridge (Shizuku alternative)
+- **Termux**: Privileged shell access and background command execution
 - **Floating Chat Bubble**: Messenger-style overlay for quick chat
 - **Theme Studio**: Live color and gradient customization with presets
 - **AI Memory**: Long-term memory, project-scoped memory, merge and restore
@@ -70,7 +70,7 @@ The following features are incomplete in the current version:
 | Dependency Injection | Manual DI |
 | Architecture | MVVM + Functional, one-way data flow |
 | Background | AppExecutors |
-| System Access | Shizuku API, Termux RUN_COMMAND |
+| System Access | Wireless ADB, Termux RUN_COMMAND |
 
 ---
 
