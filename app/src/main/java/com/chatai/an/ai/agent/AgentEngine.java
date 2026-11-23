@@ -264,16 +264,37 @@ public class AgentEngine {
 
             if (directivesToExecute.size() == 1 && "final_answer".equals(directivesToExecute.get(0).action)) {
                 AgentDirective finalDir = directivesToExecute.get(0);
-                steps.add(new AgentStep(
-                        steps.size() + 1,
-                        "Step " + turn + ": Synthesize Answer",
-                        finalDir.thought.isEmpty() ? "Completed reasoning" : finalDir.thought,
-                        "",
-                        System.currentTimeMillis()
-                ));
-                String finalAns = !finalDir.answer.isEmpty() ? finalDir.answer : rawText;
-                task = updateTask(task, AgentTaskStatus.COMPLETED, steps, finalAns, "", callback);
-                return;
+                if (finalDir.isExplicitJson || turn >= maxSteps) {
+                    steps.add(new AgentStep(
+                            steps.size() + 1,
+                            "Step " + turn + ": Synthesize Answer",
+                            finalDir.thought.isEmpty() ? "Completed reasoning" : finalDir.thought,
+                            "",
+                            System.currentTimeMillis()
+                    ));
+                    String finalAns = !finalDir.answer.isEmpty() ? finalDir.answer : rawText;
+                    task = updateTask(task, AgentTaskStatus.COMPLETED, steps, finalAns, "", callback);
+                    return;
+                } else {
+                    steps.add(new AgentStep(
+                            steps.size() + 1,
+                            "Step " + turn + ": Intermediate Plan / Thought",
+                            rawText,
+                            "",
+                            System.currentTimeMillis()
+                    ));
+                    scratchConversation.add(new Message(
+                            UUID.randomUUID().toString(), taskId, MessageRole.ASSISTANT,
+                            rawText,
+                            model.getId(), false, System.currentTimeMillis(), System.currentTimeMillis(), Collections.emptyList()
+                    ));
+                    scratchConversation.add(new Message(
+                            UUID.randomUUID().toString(), taskId, MessageRole.USER,
+                            "Please continue executing the goal. Output either the next tool invocation JSON (e.g. {\"thought\":\"...\",\"action\":\"tool_name\",\"args\":{...}}) or when fully completed, output {\"thought\":\"...\",\"action\":\"final_answer\",\"answer\":\"...\"}.",
+                            model.getId(), false, System.currentTimeMillis(), System.currentTimeMillis(), Collections.emptyList()
+                    ));
+                    continue;
+                }
             }
 
             StringBuilder turnObservations = new StringBuilder();
@@ -285,9 +306,26 @@ public class AgentEngine {
                     return;
                 }
                 if (toolRegistry.getTool(directive.action) == null) {
-                    // Model answered in prose without matching a known tool
-                    taskHolder[0] = updateTask(taskHolder[0], AgentTaskStatus.COMPLETED, steps, rawText, "", callback);
-                    return;
+                    steps.add(new AgentStep(
+                            steps.size() + 1,
+                            "Step " + turn + ": Model Message / Unknown Tool",
+                            rawText,
+                            "",
+                            System.currentTimeMillis()
+                    ));
+                    scratchConversation.add(new Message(
+                            UUID.randomUUID().toString(), taskId, MessageRole.ASSISTANT,
+                            rawText,
+                            model.getId(), false, System.currentTimeMillis(), System.currentTimeMillis(), Collections.emptyList()
+                    ));
+                    scratchConversation.add(new Message(
+                            UUID.randomUUID().toString(), taskId, MessageRole.USER,
+                            "Warning: Tool '" + directive.action + "' does not exist or model responded in prose. Please use a valid tool from the catalog or output final_answer JSON.",
+                            model.getId(), false, System.currentTimeMillis(), System.currentTimeMillis(), Collections.emptyList()
+                    ));
+                    taskHolder[0] = updateTask(taskHolder[0], AgentTaskStatus.SYNTHESIZING, steps, "", "", callback);
+                    task = taskHolder[0];
+                    continue;
                 }
 
                 steps.add(new AgentStep(
@@ -367,7 +405,7 @@ public class AgentEngine {
 
     public static AgentDirective parseDirective(String rawText) {
         if (rawText == null || rawText.isEmpty()) {
-            return new AgentDirective("", "final_answer", new JsonObject(), "");
+            return new AgentDirective("", "final_answer", new JsonObject(), "", false);
         }
         String candidate = rawText.trim();
         int firstBrace = candidate.indexOf('{');
@@ -382,11 +420,11 @@ public class AgentEngine {
                         ? obj.getAsJsonObject("args")
                         : new JsonObject();
                 String answer = obj.has("answer") ? obj.get("answer").getAsString() : "";
-                return new AgentDirective(thought, action, args, answer);
+                return new AgentDirective(thought, action, args, answer, true);
             } catch (Exception ignored) {
             }
         }
-        return new AgentDirective("Direct model response", "final_answer", new JsonObject(), rawText);
+        return new AgentDirective("Direct model response", "final_answer", new JsonObject(), rawText, false);
     }
 
     private AgentTask updateTask(
@@ -433,12 +471,18 @@ public class AgentEngine {
         public final String action;
         public final JsonObject args;
         public final String answer;
+        public final boolean isExplicitJson;
 
-        public AgentDirective(String thought, String action, JsonObject args, String answer) {
+        public AgentDirective(String thought, String action, JsonObject args, String answer, boolean isExplicitJson) {
             this.thought = thought != null ? thought : "";
             this.action = action != null ? action : "final_answer";
             this.args = args != null ? args : new JsonObject();
             this.answer = answer != null ? answer : "";
+            this.isExplicitJson = isExplicitJson;
+        }
+
+        public AgentDirective(String thought, String action, JsonObject args, String answer) {
+            this(thought, action, args, answer, true);
         }
     }
 }

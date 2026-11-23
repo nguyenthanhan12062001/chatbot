@@ -22,14 +22,23 @@ public class BubblePopupFrameLayout extends FrameLayout {
 
     public BubblePopupFrameLayout(@NonNull Context context) {
         super(context);
+        init();
     }
 
     public BubblePopupFrameLayout(@NonNull Context context, @Nullable AttributeSet attrs) {
         super(context, attrs);
+        init();
     }
 
     public BubblePopupFrameLayout(@NonNull Context context, @Nullable AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
+        init();
+    }
+
+    private void init() {
+        setFocusable(true);
+        setFocusableInTouchMode(true);
+        setDescendantFocusability(FOCUS_AFTER_DESCENDANTS);
     }
 
     public void setOnBackPressedListener(OnBackPressedListener listener) {

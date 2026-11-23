@@ -617,6 +617,7 @@ public class ChatBubbleService extends Service {
             Insets imeInsets = windowInsets.getInsets(WindowInsetsCompat.Type.ime());
             int imeBottom = imeInsets.bottom;
             boolean isImeVisible = windowInsets.isVisible(WindowInsetsCompat.Type.ime());
+            AppLogger.d(TAG, "Insets listener -> isImeVisible: " + isImeVisible + ", imeBottom: " + imeBottom);
 
             int maxPopupWidth = ThemeApplier.dpToPxInt(themedContext, 520f);
             popupParams.width = Math.min((int) (screenWidth * 0.96f), maxPopupWidth);
@@ -845,6 +846,13 @@ public class ChatBubbleService extends Service {
             public void afterTextChanged(Editable s) {
             }
         });
+        etInput.setOnClickListener(v -> {
+            boolean req = etInput.requestFocus();
+            InputMethodManager imm = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
+            boolean shown = imm != null && imm.showSoftInput(etInput, InputMethodManager.SHOW_FORCED);
+            boolean active = imm != null && imm.isActive(etInput);
+            AppLogger.d(TAG, "etInput click -> requestFocus: " + req + ", hasFocus: " + etInput.hasFocus() + ", showSoftInput: " + shown + ", isActive: " + active);
+        });
 
         popupParams = new WindowManager.LayoutParams(
                 WindowManager.LayoutParams.MATCH_PARENT,
@@ -856,7 +864,8 @@ public class ChatBubbleService extends Service {
                 PixelFormat.TRANSLUCENT
         );
         popupParams.gravity = Gravity.TOP | Gravity.CENTER_HORIZONTAL;
-        popupParams.softInputMode = WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE;
+        popupParams.softInputMode = WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE
+                | WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE;
         updatePopupDimensions();
     }
 
@@ -1008,7 +1017,12 @@ public class ChatBubbleService extends Service {
         try {
             if (!popupView.isAttachedToWindow()) {
                 windowManager.addView(popupView, popupParams);
+            } else {
+                windowManager.updateViewLayout(popupView, popupParams);
             }
+            popupView.setFocusable(true);
+            popupView.setFocusableInTouchMode(true);
+            popupView.requestFocus();
             popupView.setScaleX(0.92f);
             popupView.setScaleY(0.92f);
             popupView.setAlpha(0f);
@@ -1020,6 +1034,19 @@ public class ChatBubbleService extends Service {
                     .setInterpolator(new DecelerateInterpolator())
                     .start();
             renderMessages();
+            if (etInput != null && popupView != null) {
+                boolean rootReq = popupView.requestFocus();
+                AppLogger.d(TAG, "expandPopup -> popupView requestFocus: " + rootReq + ", hasFocus: " + popupView.hasFocus());
+                etInput.postDelayed(() -> {
+                    if (etInput != null && etInput.isAttachedToWindow()) {
+                        boolean etReq = etInput.requestFocus();
+                        InputMethodManager imm = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
+                        boolean shown = imm != null && imm.showSoftInput(etInput, InputMethodManager.SHOW_FORCED);
+                        boolean active = imm != null && imm.isActive(etInput);
+                        AppLogger.d(TAG, "expandPopup post -> etInput requestFocus: " + etReq + ", hasFocus: " + etInput.hasFocus() + ", showSoftInput: " + shown + ", isActive: " + active);
+                    }
+                }, 150L);
+            }
         } catch (Exception e) {
             AppLogger.e(TAG, "Failed to expand bubble popup", e);
             isExpanded = false;
