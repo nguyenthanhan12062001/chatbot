@@ -28,6 +28,7 @@ import com.chatai.an.ai.integration.download.DownloadToolManager;
 import com.chatai.an.ai.integration.files.WorkspaceFileManager;
 import com.chatai.an.ai.integration.net.InternetAccessManager;
 import com.chatai.an.ai.integration.shizuku.ShizukuIntegrationManager;
+import com.chatai.an.ai.integration.terminal.AppTerminalManager;
 import com.chatai.an.ai.integration.termux.TermuxIntegrationManager;
 import com.chatai.an.ai.tool.ToolRegistry;
 import com.chatai.an.app.AppContainer;
@@ -36,9 +37,11 @@ import com.chatai.an.core.AppExecutors;
 import com.chatai.an.databinding.ActivityIntegrationsHubBinding;
 import com.chatai.an.domain.model.AppSettings;
 import com.chatai.an.domain.model.IntegrationStatus;
+import com.chatai.an.domain.model.TerminalBackend;
 import com.chatai.an.domain.model.ThemePalette;
 import com.chatai.an.domain.model.ToolDefinition;
 import com.chatai.an.domain.repository.SettingsRepository;
+import com.chatai.an.presentation.terminal.TerminalActivity;
 import com.chatai.an.theme.GradientDrawableFactory;
 import com.chatai.an.theme.ThemeApplier;
 import com.chatai.an.theme.ThemeManager;
@@ -89,6 +92,7 @@ public class IntegrationsHubActivity extends AppCompatActivity {
         binding.btnHubBack.setOnClickListener(v -> finish());
 
         setupCategoryChips();
+        setupTerminalActions();
         setupTermuxActions();
         setupShizukuActions();
         setupFileActions();
@@ -111,6 +115,7 @@ public class IntegrationsHubActivity extends AppCompatActivity {
 
     private void refreshAllStates() {
         AppExecutors.getInstance().diskIO().execute(() -> {
+            appContainer.getAppTerminalManager().refreshState();
             appContainer.getTermuxIntegrationManager().refreshState();
             appContainer.getShizukuIntegrationManager().refreshState();
             appContainer.getInternetAccessManager().refreshStatus();
@@ -120,6 +125,12 @@ public class IntegrationsHubActivity extends AppCompatActivity {
     }
 
     private void bindDynamicStates() {
+        // App Terminal & Selected Backend State
+        AppTerminalManager.TerminalState appTermState = appContainer.getAppTerminalManager().inspectState();
+        TerminalBackend activeBackend = appContainer.getSettingsRepository().getSettingsSnapshot().getPreferredTerminalBackend();
+        binding.tvTerminalStatusDetail.setText("Active: " + activeBackend.getDefaultLabel() + " • " + appTermState.detail);
+        styleHubTerminalButtons(activeBackend);
+
         // Termux State
         TermuxIntegrationManager.TermuxState tState = appContainer.getTermuxIntegrationManager().inspectState();
         binding.tvTermuxStatusDetail.setText("Status: " + tState.status.name() + " • " + tState.detail);
@@ -151,11 +162,50 @@ public class IntegrationsHubActivity extends AppCompatActivity {
 
     private void filterCards(String cat) {
         boolean all = "all".equals(cat);
+        binding.cardHubTerminal.setVisibility(all || "shell".equals(cat) ? View.VISIBLE : View.GONE);
         binding.cardHubTermux.setVisibility(all || "shell".equals(cat) ? View.VISIBLE : View.GONE);
         binding.cardHubShizuku.setVisibility(all || "shell".equals(cat) ? View.VISIBLE : View.GONE);
         binding.cardHubFiles.setVisibility(all || "files".equals(cat) ? View.VISIBLE : View.GONE);
         binding.cardHubNet.setVisibility(all || "net".equals(cat) ? View.VISIBLE : View.GONE);
         binding.cardHubTools.setVisibility(all || "tools".equals(cat) ? View.VISIBLE : View.GONE);
+    }
+
+    private void setupTerminalActions() {
+        binding.btnHubBackendApp.setOnClickListener(v -> {
+            appContainer.getSettingsRepository().setPreferredTerminalBackend(TerminalBackend.APP_TERMINAL);
+            bindDynamicStates();
+        });
+        binding.btnHubBackendTermux.setOnClickListener(v -> {
+            appContainer.getSettingsRepository().setPreferredTerminalBackend(TerminalBackend.TERMUX);
+            bindDynamicStates();
+        });
+        binding.btnHubOpenTerminal.setOnClickListener(v ->
+                startActivity(new Intent(this, TerminalActivity.class))
+        );
+    }
+
+    private void styleHubTerminalButtons(TerminalBackend activeBackend) {
+        if (palette == null) return;
+        int stroke = ThemeApplier.dpToPxInt(this, 1f);
+        int border = palette.getBorderColor();
+        boolean isApp = activeBackend == TerminalBackend.APP_TERMINAL;
+
+        binding.btnHubBackendApp.setBackground(isApp
+                ? GradientDrawableFactory.createLinearGradient(palette, 999f)
+                : GradientDrawableFactory.createPill(palette.getSurfaceVariantColor(), border, stroke));
+        binding.btnHubBackendApp.setTextColor(isApp ? palette.getOnPrimaryColor() : palette.getTextPrimaryColor());
+
+        binding.btnHubBackendTermux.setBackground(!isApp
+                ? GradientDrawableFactory.createLinearGradient(palette, 999f)
+                : GradientDrawableFactory.createPill(palette.getSurfaceVariantColor(), border, stroke));
+        binding.btnHubBackendTermux.setTextColor(!isApp ? palette.getOnPrimaryColor() : palette.getTextPrimaryColor());
+
+        binding.btnHubOpenTerminal.setBackground(GradientDrawableFactory.createPill(
+                ThemeApplier.blendWithAlpha(palette.getPrimaryColor(), 26),
+                palette.getPrimaryColor(),
+                stroke
+        ));
+        binding.btnHubOpenTerminal.setTextColor(palette.getPrimaryColor());
     }
 
     private void setupTermuxActions() {
@@ -446,6 +496,7 @@ public class IntegrationsHubActivity extends AppCompatActivity {
         int surface = palette.getSurfaceColor();
         int border = palette.getBorderColor();
 
+        binding.cardHubTerminal.setBackground(GradientDrawableFactory.createSurfaceCard(surface, border, stroke, cardRadius));
         binding.cardHubTermux.setBackground(GradientDrawableFactory.createSurfaceCard(surface, border, stroke, cardRadius));
         binding.cardHubShizuku.setBackground(GradientDrawableFactory.createSurfaceCard(surface, border, stroke, cardRadius));
         binding.cardHubFiles.setBackground(GradientDrawableFactory.createSurfaceCard(surface, border, stroke, cardRadius));
@@ -453,7 +504,7 @@ public class IntegrationsHubActivity extends AppCompatActivity {
         binding.cardHubTools.setBackground(GradientDrawableFactory.createSurfaceCard(surface, border, stroke, cardRadius));
 
         TextView[] titles = {
-                binding.tvTermuxCardTitle, binding.tvShizukuCardTitle,
+                binding.tvTerminalCardTitle, binding.tvTermuxCardTitle, binding.tvShizukuCardTitle,
                 binding.tvFilesCardTitle, binding.tvNetCardTitle, binding.tvToolsCardTitle
         };
         for (TextView tv : titles) {
@@ -461,6 +512,7 @@ public class IntegrationsHubActivity extends AppCompatActivity {
         }
 
         TextView[] details = {
+                binding.tvTerminalStatusDetail, binding.tvTerminalBackendLabel,
                 binding.tvTermuxStatusDetail, binding.tvShizukuStatusDetail,
                 binding.tvFilesWorkspacePath, binding.tvNetStatusDetail, binding.tvDownloadsDir,
                 binding.tvToolsSubtitle, binding.tvShizukuFallbackLabel
@@ -481,6 +533,8 @@ public class IntegrationsHubActivity extends AppCompatActivity {
                 btn.setTextColor(palette.getPrimaryColor());
             }
         }
+
+        styleHubTerminalButtons(appContainer.getSettingsRepository().getSettingsSnapshot().getPreferredTerminalBackend());
 
         TextView[] chips = {
                 binding.chipHubAll, binding.chipHubShell, binding.chipHubFiles,

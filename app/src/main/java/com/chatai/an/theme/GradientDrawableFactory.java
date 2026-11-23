@@ -13,23 +13,32 @@ public final class GradientDrawableFactory {
     }
 
     public static GradientDrawable createLinearGradient(ThemePalette palette, float cornerRadiusPx) {
-        List<Integer> colorsList = palette.getGradientColors();
-        int[] colors;
-        if (colorsList == null || colorsList.isEmpty()) {
-            colors = new int[]{palette.getPrimaryColor(), palette.getSecondaryColor()};
-        } else if (colorsList.size() == 1) {
-            colors = new int[]{colorsList.get(0), palette.getSecondaryColor()};
-        } else {
-            colors = new int[colorsList.size()];
-            for (int i = 0; i < colorsList.size(); i++) {
-                colors[i] = colorsList.get(i);
-            }
-        }
-
-        GradientDrawable drawable = new GradientDrawable(toOrientation(palette.getGradientDirection()), colors);
+        GradientDrawable drawable = new GradientDrawable(toOrientation(palette.getGradientDirection()), extractGradientColors(palette));
         drawable.setShape(GradientDrawable.RECTANGLE);
         drawable.setCornerRadius(cornerRadiusPx);
         return drawable;
+    }
+
+    public static GradientDrawable createLinearGradientWithRadii(ThemePalette palette, float[] cornerRadiiPx) {
+        GradientDrawable drawable = new GradientDrawable(toOrientation(palette.getGradientDirection()), extractGradientColors(palette));
+        drawable.setShape(GradientDrawable.RECTANGLE);
+        drawable.setCornerRadii(cornerRadiiPx);
+        return drawable;
+    }
+
+    private static int[] extractGradientColors(ThemePalette palette) {
+        List<Integer> colorsList = palette.getGradientColors();
+        if (colorsList == null || colorsList.isEmpty()) {
+            return new int[]{palette.getPrimaryColor(), palette.getSecondaryColor()};
+        } else if (colorsList.size() == 1) {
+            return new int[]{colorsList.get(0), palette.getSecondaryColor()};
+        } else {
+            int[] colors = new int[colorsList.size()];
+            for (int i = 0; i < colorsList.size(); i++) {
+                colors[i] = colorsList.get(i);
+            }
+            return colors;
+        }
     }
 
     public static GradientDrawable createSurfaceCard(int fillColor, int strokeColor, int strokeWidthPx, float cornerRadiusPx) {
@@ -37,6 +46,17 @@ public final class GradientDrawableFactory {
         drawable.setShape(GradientDrawable.RECTANGLE);
         drawable.setColor(fillColor);
         drawable.setCornerRadius(cornerRadiusPx);
+        if (strokeWidthPx > 0) {
+            drawable.setStroke(strokeWidthPx, strokeColor);
+        }
+        return drawable;
+    }
+
+    public static GradientDrawable createSurfaceCardWithRadii(int fillColor, int strokeColor, int strokeWidthPx, float[] cornerRadiiPx) {
+        GradientDrawable drawable = new GradientDrawable();
+        drawable.setShape(GradientDrawable.RECTANGLE);
+        drawable.setColor(fillColor);
+        drawable.setCornerRadii(cornerRadiiPx);
         if (strokeWidthPx > 0) {
             drawable.setStroke(strokeWidthPx, strokeColor);
         }

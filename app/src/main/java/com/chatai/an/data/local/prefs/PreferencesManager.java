@@ -7,6 +7,7 @@ import com.chatai.an.core.AppLogger;
 import com.chatai.an.domain.model.AgentMode;
 import com.chatai.an.domain.model.AppLanguage;
 import com.chatai.an.domain.model.AppSettings;
+import com.chatai.an.domain.model.TerminalBackend;
 import com.chatai.an.domain.model.ThemeConfig;
 import com.chatai.an.theme.ThemePresetCatalog;
 import com.google.gson.Gson;
@@ -39,6 +40,8 @@ public class PreferencesManager {
     private static final String KEY_ACTIVE_WORKSPACE_PATH = "active_workspace_path";
     private static final String KEY_DOWNLOAD_DEST_PATH = "download_destination_path";
     private static final String KEY_ALLOW_SHIZUKU_FILE_FALLBACK = "allow_shizuku_file_fallback";
+    private static final String KEY_CHAT_BUBBLE_ENABLED = "chat_bubble_enabled";
+    private static final String KEY_PREFERRED_TERMINAL_BACKEND = "preferred_terminal_backend";
     private static final String KEY_DISABLED_TOOLS = "disabled_tool_names";
     private static final String KEY_SAF_GRANTED_TREES_JSON = "saf_granted_trees_json";
 
@@ -99,6 +102,8 @@ public class PreferencesManager {
                 prefs.getString(KEY_ACTIVE_WORKSPACE_PATH, ""),
                 prefs.getString(KEY_DOWNLOAD_DEST_PATH, ""),
                 prefs.getBoolean(KEY_ALLOW_SHIZUKU_FILE_FALLBACK, false),
+                prefs.getBoolean(KEY_CHAT_BUBBLE_ENABLED, false),
+                TerminalBackend.fromName(prefs.getString(KEY_PREFERRED_TERMINAL_BACKEND, TerminalBackend.APP_TERMINAL.name())),
                 disabled != null ? new HashSet<>(disabled) : Collections.emptySet()
         );
     }
@@ -159,6 +164,15 @@ public class PreferencesManager {
 
     public void setAllowShizukuFileFallback(boolean allowed) {
         prefs.edit().putBoolean(KEY_ALLOW_SHIZUKU_FILE_FALLBACK, allowed).apply();
+    }
+
+    public void setBubbleEnabled(boolean enabled) {
+        prefs.edit().putBoolean(KEY_CHAT_BUBBLE_ENABLED, enabled).apply();
+    }
+
+    public void setPreferredTerminalBackend(TerminalBackend backend) {
+        TerminalBackend safe = backend != null ? backend : TerminalBackend.APP_TERMINAL;
+        prefs.edit().putString(KEY_PREFERRED_TERMINAL_BACKEND, safe.name()).apply();
     }
 
     public void setToolEnabled(String toolName, boolean enabled) {

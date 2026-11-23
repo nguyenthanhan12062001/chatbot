@@ -5,6 +5,7 @@ import androidx.lifecycle.LiveData;
 import com.chatai.an.domain.model.AgentMode;
 import com.chatai.an.domain.model.AppLanguage;
 import com.chatai.an.domain.model.AppSettings;
+import com.chatai.an.domain.model.TerminalBackend;
 
 public interface SettingsRepository {
     LiveData<AppSettings> observeSettings();
@@ -38,6 +39,10 @@ public interface SettingsRepository {
     void setDownloadDestinationPath(String path);
 
     void setAllowShizukuFileFallback(boolean allowed);
+
+    void setBubbleEnabled(boolean enabled);
+
+    void setPreferredTerminalBackend(TerminalBackend backend);
 
     void setToolEnabled(String toolName, boolean enabled);
 }

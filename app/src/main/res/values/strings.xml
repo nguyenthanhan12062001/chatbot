@@ -339,5 +339,56 @@
     <string name="hub_downloads_test">Test Download URL</string>
     <string name="hub_permissions_title">Permission Management</string>
     <string name="hub_tools_title">Shared Tool Matrix</string>
+
+    <!-- Floating Messenger-style Chat Bubble -->
+    <string name="assistant_name_anai">AnAI</string>
+    <string name="cd_chat_bubble">Toggle floating chat bubble</string>
+    <string name="settings_chat_bubble">Floating Chat Bubble</string>
+    <string name="settings_chat_bubble_desc">Show a Messenger-style floating AnAI bubble over other apps</string>
+    <string name="bubble_permission_title">Allow Display Over Other Apps</string>
+    <string name="bubble_permission_message">To show the Messenger-style AnAI chat bubble while using other apps, please grant the \"Display over other apps\" permission in system settings.</string>
+    <string name="bubble_permission_grant">Open Settings</string>
+    <string name="bubble_started_notice">AnAI chat bubble enabled. Drag to move, tap to chat, or drag to X to close.</string>
+    <string name="bubble_stopped_notice">AnAI chat bubble turned off.</string>
+    <string name="bubble_notif_channel_name">AnAI Chat Bubble</string>
+    <string name="bubble_notif_channel_desc">Keeps the floating AnAI chat bubble active over other apps</string>
+    <string name="bubble_notif_title">AnAI Chat Bubble Active</string>
+    <string name="bubble_notif_text">Tap the floating bubble to chat with AnAI anywhere.</string>
+    <string name="bubble_notif_action_open">Open Bubble</string>
+    <string name="bubble_notif_action_close">Close</string>
+    <string name="bubble_open_full_app">Open in full app</string>
+    <string name="bubble_minimize">Minimize bubble</string>
+    <string name="bubble_close">Close bubble</string>
+    <string name="bubble_empty_title">Hi! I\'m AnAI ✨</string>
+    <string name="bubble_empty_subtitle">Ask anything quickly right from this floating chat bubble.</string>
+    <string name="bubble_input_hint">Message AnAI…</string>
+
+    <!-- In-App Terminal & Backend Selection (CodeOnTheGo-inspired) -->
+    <string name="sidebar_terminal">Terminal</string>
+    <string name="terminal_title">Terminal</string>
+    <string name="terminal_backend_app">App Terminal</string>
+    <string name="terminal_backend_termux">Termux</string>
+    <string name="terminal_backend_choose_title">Terminal Execution Backend</string>
+    <string name="terminal_backend_app_desc">Built-in App Terminal (/system/bin/sh inside workspace)</string>
+    <string name="terminal_backend_termux_desc">Termux external environment (com.termux.RUN_COMMAND)</string>
+    <string name="terminal_input_hint">Enter shell command…</string>
+    <string name="terminal_stdin_hint">Send input to running process…</string>
+    <string name="terminal_cd_copy">Copy terminal output</string>
+    <string name="terminal_cd_clear">Clear terminal</string>
+    <string name="terminal_cd_run">Run command</string>
+    <string name="terminal_cd_stop">Interrupt process (Ctrl+C)</string>
+    <string name="terminal_cleared_msg">Terminal console cleared</string>
+    <string name="terminal_copied_msg">Terminal output copied</string>
+    <string name="terminal_status_app_ready">Built-in sh ready • %1$s</string>
+    <string name="terminal_status_running">Running… Tap STOP or CTRL+C to interrupt</string>
+    <string name="terminal_status_termux_ready">Termux active • Commands route via RUN_COMMAND API</string>
+    <string name="terminal_status_termux_setup">Termux needs setup (%1$s)</string>
+    <string name="terminal_open_hub">Open Hub</string>
+    <string name="settings_terminal_open_title">In-App Terminal Console</string>
+    <string name="settings_terminal_open_desc">Run shell commands, view ANSI output &amp; use extra dev keys</string>
+    <string name="settings_terminal_backend_title">Terminal Execution Backend</string>
+    <string name="hub_terminal_title">In-App Terminal &amp; Backend Mode</string>
+    <string name="hub_terminal_open">Open Terminal</string>
+    <string name="hub_terminal_choose_label">Default Terminal Engine:</string>
 </resources>
 

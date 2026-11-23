@@ -9,6 +9,11 @@ import static org.junit.Assert.assertTrue;
 
 import android.content.Context;
 import android.graphics.Color;
+import android.view.Gravity;
+import android.view.View;
+import android.widget.FrameLayout;
+import android.widget.LinearLayout;
+import android.widget.TextView;
 
 import androidx.room.Room;
 import androidx.test.core.app.ApplicationProvider;
@@ -34,15 +39,20 @@ import com.chatai.an.domain.model.MemoryArea;
 import com.chatai.an.domain.model.MemoryCategory;
 import com.chatai.an.domain.model.MemoryItem;
 import com.chatai.an.domain.model.MemoryScope;
+import com.chatai.an.domain.model.Message;
+import com.chatai.an.domain.model.MessageRole;
 import com.chatai.an.domain.model.ModelCapability;
 import com.chatai.an.domain.model.ModelProvider;
 import com.chatai.an.domain.model.ThemeConfig;
+import com.chatai.an.domain.model.ThemePalette;
 import com.chatai.an.domain.model.ThemePreset;
 import com.chatai.an.domain.model.ToolPermission;
 import com.chatai.an.domain.model.ToolResult;
 import com.chatai.an.domain.repository.ModelRepository;
 import com.chatai.an.domain.repository.ThemeRepository;
+import com.chatai.an.presentation.chat.MessageAdapter;
 import com.chatai.an.presentation.themestudio.ThemeStudioViewModel;
+import com.chatai.an.theme.ThemePresetCatalog;
 import com.google.gson.JsonObject;
 
 import org.junit.Test;
@@ -311,5 +321,111 @@ public class ChatAiRobolectricTest {
         assertEquals(ToolPermission.AUTO_ALLOW, registry.getTool("remember").getDefinition().getPermission());
         assertEquals(ToolPermission.AUTO_ALLOW, registry.getTool("recall").getDefinition().getPermission());
         assertEquals(ToolPermission.REQUIRE_CONFIRMATION, registry.getTool("web_fetch").getDefinition().getPermission());
+    }
+
+    @Test
+    @org.robolectric.annotation.GraphicsMode(org.robolectric.annotation.GraphicsMode.Mode.NATIVE)
+    public void messageAdapter_bubblesHugShortContentAndCapLongContentAcrossMainAndPopupWidths() {
+        ChatAiApplication app = ApplicationProvider.getApplicationContext();
+        ModelRepository modelRepo = app.getAppContainer().getModelRepository();
+        MessageAdapter adapter = new MessageAdapter(modelRepo, null);
+        adapter.setPalette(ThemePresetCatalog.getDarkPalette(ThemePreset.OCEAN_BLUE));
+
+        long now = System.currentTimeMillis();
+        Message shortUser = new Message(
+                "m1", "c1", MessageRole.USER, "Hi", "", "pollinations/openai",
+                "pollinations", AccessType.FREE, false, null, false, now, now, java.util.Collections.emptyList()
+        );
+        Message mediumUser = new Message(
+                "m2", "c1", MessageRole.USER, "Can you explain MVVM briefly?", "", "pollinations/openai",
+                "pollinations", AccessType.FREE, false, null, false, now, now, java.util.Collections.emptyList()
+        );
+        Message longUser = new Message(
+                "m3", "c1", MessageRole.USER,
+                "This is a very long user message meant to verify that dynamic Messenger-style bubbles expand up to the maximum width ratio and wrap naturally across multiple lines without stretching short bubbles. "
+                        + "Adding enough extra sentences here so that even under headless JVM Robolectric font metrics at medium density the continuous paragraph exceeds the bubble maximum width ceiling and wraps cleanly onto multiple vertical lines inside MaxWidthLinearLayout without overflowing the main chat viewport or the compact floating Messenger bubble popup window. "
+                        + "Repeating a realistic multi-sentence question about Android RecyclerView ViewHolder measurement, wrap_content bubbles, asymmetric corner radii, Markdown code blocks, and synchronized floating overlay popup rendering so total character length cleanly surpasses 850 characters.",
+                "", "pollinations/openai",
+                "pollinations", AccessType.FREE, false, null, false, now, now, java.util.Collections.emptyList()
+        );
+        Message shortAssistant = new Message(
+                "m4", "c1", MessageRole.ASSISTANT, "Hello!", "", "pollinations/openai",
+                "pollinations", AccessType.FREE, false, null, false, now, now, java.util.Collections.emptyList()
+        );
+        Message longMarkdownAssistant = new Message(
+                "m5", "c1", MessageRole.ASSISTANT,
+                "# Summary\nHere is a multi-line explanation with `inline` code and a snippet:\n```java\npublic String greet(String name) {\n    return \"Hello from AnAI, \" + name + \"! This line is deliberately long to verify horizontal scrolling.\";\n}\n```",
+                "Reasoning step 1\nReasoning step 2", "pollinations/openai",
+                "pollinations", AccessType.FREE, true, null, false, now, now, java.util.Collections.emptyList()
+        );
+
+        adapter.submitList(Arrays.asList(shortUser, mediumUser, longUser, shortAssistant, longMarkdownAssistant));
+
+        int[] containerWidths = new int[]{1080, 760}; // Main screen vs narrower floating bubble popup
+        Context themedCtx = new androidx.appcompat.view.ContextThemeWrapper(app, R.style.Theme_ChatAI);
+        for (int parentWidth : containerWidths) {
+            FrameLayout parent = new FrameLayout(themedCtx);
+            int wSpec = View.MeasureSpec.makeMeasureSpec(parentWidth, View.MeasureSpec.EXACTLY);
+            int hSpec = View.MeasureSpec.makeMeasureSpec(2000, View.MeasureSpec.AT_MOST);
+
+            int[] measuredBubbleWidths = new int[5];
+            int[] measuredBubbleHeights = new int[5];
+
+            for (int i = 0; i < 5; i++) {
+                MessageAdapter.MessageViewHolder vh = adapter.onCreateViewHolder(parent, 0);
+                adapter.onBindViewHolder(vh, i);
+                vh.itemView.measure(wSpec, hSpec);
+                vh.itemView.layout(0, 0, vh.itemView.getMeasuredWidth(), vh.itemView.getMeasuredHeight());
+
+                View bubble = vh.itemView.findViewById(R.id.message_bubble_container);
+                View header = vh.itemView.findViewById(R.id.layout_message_header);
+                TextView tvRole = vh.itemView.findViewById(R.id.tv_message_role);
+
+                measuredBubbleWidths[i] = bubble.getMeasuredWidth();
+                measuredBubbleHeights[i] = bubble.getMeasuredHeight();
+
+                boolean isUser = i < 3;
+                if (isUser) {
+                    assertEquals(View.GONE, header.getVisibility());
+                    assertTrue("User bubble exceeded 78% cap at width " + parentWidth,
+                            measuredBubbleWidths[i] <= Math.round(parentWidth * 0.78f) + 4);
+                    assertEquals(Gravity.END, ((LinearLayout.LayoutParams) bubble.getLayoutParams()).gravity);
+                } else {
+                    assertEquals(View.VISIBLE, header.getVisibility());
+                    assertEquals("AnAI", tvRole.getText().toString());
+                    assertTrue("Assistant bubble exceeded 86% cap at width " + parentWidth,
+                            measuredBubbleWidths[i] <= Math.round(parentWidth * 0.86f) + 4);
+                    assertEquals(Gravity.START, ((LinearLayout.LayoutParams) bubble.getLayoutParams()).gravity);
+                }
+
+                if (i == 4) {
+                    View thinkingContainer = vh.itemView.findViewById(R.id.thinking_process_container);
+                    View tvThinkingContent = vh.itemView.findViewById(R.id.tv_thinking_content);
+                    View codeRoot = vh.itemView.findViewById(R.id.code_block_root);
+                    View tvLang = vh.itemView.findViewById(R.id.tv_code_language);
+                    View btnCopyCode = vh.itemView.findViewById(R.id.btn_copy_code);
+                    assertEquals(View.VISIBLE, thinkingContainer.getVisibility());
+                    assertEquals(View.GONE, tvThinkingContent.getVisibility());
+                    assertNotNull(codeRoot);
+                    assertTrue("Code block width should be > 0", codeRoot.getMeasuredWidth() > 0);
+                    assertTrue("Code language label should not collapse", tvLang.getMeasuredWidth() > 0);
+                    assertTrue("Copy code button should be visible and measured", btnCopyCode.getMeasuredWidth() > 0);
+                }
+            }
+
+            // Short bubble must be strictly narrower than medium, and medium <= long
+            assertTrue("Short user bubble should hug text (" + measuredBubbleWidths[0] + " vs " + measuredBubbleWidths[1] + ")",
+                    measuredBubbleWidths[0] < measuredBubbleWidths[1]);
+            assertTrue("Medium user bubble should be narrower than wrapped long bubble (" + measuredBubbleWidths[1] + " vs " + measuredBubbleWidths[2] + ")",
+                    measuredBubbleWidths[1] <= measuredBubbleWidths[2]);
+            assertTrue("Long user bubble should wrap vertically taller than short bubble (shortH="
+                            + measuredBubbleHeights[0] + ", longH=" + measuredBubbleHeights[2]
+                            + ", widths=" + Arrays.toString(measuredBubbleWidths) + ")",
+                    measuredBubbleHeights[2] > measuredBubbleHeights[0]);
+            assertTrue("Short assistant bubble should hug text rather than match_parent (" + measuredBubbleWidths[3] + " vs " + parentWidth + ")",
+                    measuredBubbleWidths[3] < parentWidth / 2);
+            assertTrue("Long markdown assistant bubble should be taller and wider than short assistant bubble",
+                    measuredBubbleWidths[4] > measuredBubbleWidths[3] && measuredBubbleHeights[4] > measuredBubbleHeights[3]);
+        }
     }
 }

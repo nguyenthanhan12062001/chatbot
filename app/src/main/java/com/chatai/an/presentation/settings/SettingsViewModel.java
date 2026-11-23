@@ -13,6 +13,7 @@ import com.chatai.an.domain.model.AgentMode;
 import com.chatai.an.domain.model.AiModel;
 import com.chatai.an.domain.model.AppLanguage;
 import com.chatai.an.domain.model.AppSettings;
+import com.chatai.an.domain.model.TerminalBackend;
 import com.chatai.an.domain.model.ThemeConfig;
 import com.chatai.an.domain.model.ThemeMode;
 import com.chatai.an.domain.model.ThemePreset;
@@ -191,6 +192,15 @@ public class SettingsViewModel extends ViewModel {
 
     public void setAllowShizukuFileFallback(boolean allowed) {
         settingsRepository.setAllowShizukuFileFallback(allowed);
+        refreshDiagnostics();
+    }
+
+    public void setBubbleEnabled(boolean enabled) {
+        settingsRepository.setBubbleEnabled(enabled);
+    }
+
+    public void setPreferredTerminalBackend(TerminalBackend backend) {
+        settingsRepository.setPreferredTerminalBackend(backend);
         refreshDiagnostics();
     }
 

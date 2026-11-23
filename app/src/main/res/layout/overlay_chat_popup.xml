@@ -1,0 +1,236 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.chatai.an.presentation.bubble.BubblePopupFrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/bubble_popup_root"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:clipToPadding="false"
+    android:padding="10dp">
+
+    <LinearLayout
+        android:id="@+id/bubble_popup_card"
+        android:layout_width="match_parent"
+        android:layout_height="430dp"
+        android:elevation="14dp"
+        android:orientation="vertical">
+
+        <!-- Header -->
+        <LinearLayout
+            android:id="@+id/bubble_popup_header"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingHorizontal="12dp"
+            android:paddingVertical="10dp">
+
+            <FrameLayout
+                android:id="@+id/bubble_header_avatar"
+                android:layout_width="36dp"
+                android:layout_height="36dp">
+
+                <ImageView
+                    android:id="@+id/iv_bubble_header_icon"
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
+                    android:layout_gravity="center"
+                    android:contentDescription="@null"
+                    android:src="@drawable/ic_chat_spark" />
+            </FrameLayout>
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="10dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/tv_bubble_title"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/assistant_name_anai"
+                    android:textSize="15sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/tv_bubble_subtitle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:textSize="11sp"
+                    tools:text="GPT-4o Mini" />
+            </LinearLayout>
+
+            <ImageButton
+                android:id="@+id/btn_bubble_new_chat"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/sidebar_new_chat"
+                android:padding="9dp"
+                android:src="@drawable/ic_add" />
+
+            <ImageButton
+                android:id="@+id/btn_bubble_open_app"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/bubble_open_full_app"
+                android:padding="9dp"
+                android:src="@drawable/ic_open_in_new" />
+
+            <ImageButton
+                android:id="@+id/btn_bubble_collapse"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/bubble_minimize"
+                android:padding="9dp"
+                android:src="@drawable/ic_chevron_down" />
+
+            <ImageButton
+                android:id="@+id/btn_bubble_close"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/bubble_close"
+                android:padding="9dp"
+                android:src="@drawable/ic_close" />
+        </LinearLayout>
+
+        <View
+            android:id="@+id/bubble_header_divider"
+            android:layout_width="match_parent"
+            android:layout_height="1dp" />
+
+        <!-- Message Stream -->
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1">
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rv_bubble_messages"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:clipToPadding="false"
+                android:paddingHorizontal="8dp"
+                android:paddingVertical="6dp"
+                android:visibility="gone" />
+
+            <LinearLayout
+                android:id="@+id/bubble_empty_state"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:gravity="center"
+                android:orientation="vertical"
+                android:padding="24dp">
+
+                <TextView
+                    android:id="@+id/tv_bubble_empty_title"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:text="@string/bubble_empty_title"
+                    android:textSize="16sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/tv_bubble_empty_sub"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:gravity="center"
+                    android:lineSpacingExtra="2dp"
+                    android:text="@string/bubble_empty_subtitle"
+                    android:textSize="12sp" />
+            </LinearLayout>
+        </FrameLayout>
+
+        <!-- Compact Live Execution Status Pill -->
+        <LinearLayout
+            android:id="@+id/bubble_status_bar"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginHorizontal="12dp"
+            android:layout_marginVertical="4dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingHorizontal="10dp"
+            android:paddingVertical="4dp"
+            android:visibility="gone">
+
+            <ProgressBar
+                android:id="@+id/pb_bubble_status"
+                style="?android:attr/progressBarStyleSmall"
+                android:layout_width="12dp"
+                android:layout_height="12dp"
+                android:layout_marginEnd="6dp" />
+
+            <TextView
+                android:id="@+id/tv_bubble_status"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                tools:text="Đang trả lời..." />
+        </LinearLayout>
+
+        <View
+            android:id="@+id/bubble_composer_divider"
+            android:layout_width="match_parent"
+            android:layout_height="1dp" />
+
+        <!-- Composer -->
+        <LinearLayout
+            android:id="@+id/bubble_composer_row"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingHorizontal="10dp"
+            android:paddingVertical="8dp">
+
+            <EditText
+                android:id="@+id/et_bubble_input"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:background="@null"
+                android:gravity="center_vertical|start"
+                android:hint="@string/bubble_input_hint"
+                android:imeOptions="actionSend"
+                android:importantForAutofill="no"
+                android:inputType="textMultiLine|textCapSentences"
+                android:maxLines="4"
+                android:minHeight="40dp"
+                android:paddingHorizontal="10dp"
+                android:paddingVertical="6dp"
+                android:textSize="14sp" />
+
+            <ImageButton
+                android:id="@+id/btn_bubble_stop"
+                android:layout_width="42dp"
+                android:layout_height="42dp"
+                android:layout_marginStart="6dp"
+                android:contentDescription="@string/cd_stop_generation"
+                android:padding="10dp"
+                android:src="@drawable/ic_stop"
+                android:visibility="gone" />
+
+            <ImageButton
+                android:id="@+id/btn_bubble_send"
+                android:layout_width="42dp"
+                android:layout_height="42dp"
+                android:layout_marginStart="6dp"
+                android:contentDescription="@string/cd_send"
+                android:padding="10dp"
+                android:src="@drawable/ic_send" />
+        </LinearLayout>
+    </LinearLayout>
+</com.chatai.an.presentation.bubble.BubblePopupFrameLayout>

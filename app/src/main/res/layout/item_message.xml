@@ -4,213 +4,238 @@
     android:id="@+id/message_row_root"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
+    android:clipToPadding="false"
     android:orientation="vertical"
-    android:paddingVertical="6dp">
+    android:paddingHorizontal="2dp"
+    android:paddingVertical="5dp">
 
+    <!-- Compact Assistant Header (hidden for User bubbles so short bubbles stay crisp) -->
     <LinearLayout
-        android:id="@+id/message_bubble_container"
-        android:layout_width="match_parent"
+        android:id="@+id/layout_message_header"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="12dp">
+        android:layout_marginStart="2dp"
+        android:layout_marginBottom="3dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
 
-        <!-- Header row: Role + Model / AccessType / Deep Thinking badge + Edited tag -->
-        <LinearLayout
-            android:layout_width="match_parent"
+        <FrameLayout
+            android:id="@+id/avatar_assistant_badge"
+            android:layout_width="18dp"
+            android:layout_height="18dp">
+
+            <ImageView
+                android:id="@+id/iv_assistant_avatar"
+                android:layout_width="11dp"
+                android:layout_height="11dp"
+                android:layout_gravity="center"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_chat_spark" />
+        </FrameLayout>
+
+        <TextView
+            android:id="@+id/tv_message_role"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_marginStart="6dp"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            tools:text="AnAI" />
+
+        <TextView
+            android:id="@+id/tv_message_model"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="6dp"
+            android:ellipsize="end"
+            android:maxWidth="165dp"
+            android:maxLines="1"
+            android:textSize="11sp"
+            tools:text="GPT-4o Mini" />
+
+        <TextView
+            android:id="@+id/tv_message_access_badge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="5dp"
+            android:paddingHorizontal="5dp"
+            android:paddingVertical="1dp"
+            android:textSize="9.5sp"
+            android:textStyle="bold"
+            android:visibility="gone"
+            tools:text="Free"
+            tools:visibility="visible" />
+    </LinearLayout>
+
+    <!-- Compact Collapsible Thinking Pill / Drawer (outside answer bubble) -->
+    <com.chatai.an.presentation.chat.MaxWidthLinearLayout
+        android:id="@+id/thinking_process_container"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="4dp"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:id="@+id/btn_toggle_thinking"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:clickable="true"
+            android:focusable="true"
             android:gravity="center_vertical"
-            android:orientation="horizontal">
+            android:minHeight="28dp"
+            android:orientation="horizontal"
+            android:paddingHorizontal="10dp"
+            android:paddingVertical="4dp">
+
+            <ImageView
+                android:id="@+id/iv_thinking_icon"
+                android:layout_width="14dp"
+                android:layout_height="14dp"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_psychology" />
 
             <TextView
-                android:id="@+id/tv_message_role"
+                android:id="@+id/tv_thinking_header"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textSize="12sp"
-                android:textStyle="bold"
-                tools:text="Assistant" />
+                android:layout_marginStart="5dp"
+                android:text="@string/thinking_process_title"
+                android:textSize="11.5sp"
+                android:textStyle="bold" />
 
             <TextView
-                android:id="@+id/tv_message_model"
+                android:id="@+id/tv_thinking_toggle"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="8dp"
-                android:ellipsize="end"
-                android:maxLines="1"
-                android:textSize="11sp"
-                tools:text="GPT-4o Mini (Free)" />
-
-            <TextView
-                android:id="@+id/tv_message_access_badge"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="6dp"
-                android:paddingHorizontal="6dp"
-                android:paddingVertical="1dp"
-                android:textSize="10sp"
-                android:textStyle="bold"
-                android:visibility="gone"
-                tools:text="Free"
-                tools:visibility="visible" />
-
-            <TextView
-                android:id="@+id/tv_message_deep_thinking"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="6dp"
-                android:paddingHorizontal="6dp"
-                android:paddingVertical="2dp"
-                android:text="@string/deep_thinking_enabled_badge"
-                android:textSize="10sp"
-                android:textStyle="bold"
-                android:visibility="gone" />
-
-            <View
-                android:layout_width="0dp"
-                android:layout_height="1dp"
-                android:layout_weight="1" />
-
-            <TextView
-                android:id="@+id/tv_message_edited"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/edited_label"
-                android:textSize="10sp"
-                android:visibility="gone" />
+                android:text="@string/thinking_process_toggle_show"
+                android:textSize="11sp" />
         </LinearLayout>
 
-        <!-- Collapsible Thinking Process block -->
-        <LinearLayout
-            android:id="@+id/thinking_process_container"
-            android:layout_width="match_parent"
+        <TextView
+            android:id="@+id/tv_thinking_content"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:orientation="vertical"
-            android:padding="10dp"
-            android:visibility="gone">
+            android:lineSpacingExtra="2dp"
+            android:paddingHorizontal="11dp"
+            android:paddingTop="2dp"
+            android:paddingBottom="9dp"
+            android:textIsSelectable="true"
+            android:textSize="12sp"
+            android:visibility="gone" />
+    </com.chatai.an.presentation.chat.MaxWidthLinearLayout>
 
-            <LinearLayout
-                android:id="@+id/btn_toggle_thinking"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:clickable="true"
-                android:focusable="true"
-                android:gravity="center_vertical"
-                android:minHeight="32dp"
-                android:orientation="horizontal">
-
-                <ImageView
-                    android:id="@+id/iv_thinking_icon"
-                    android:layout_width="16dp"
-                    android:layout_height="16dp"
-                    android:contentDescription="@null"
-                    android:src="@drawable/ic_psychology" />
-
-                <TextView
-                    android:id="@+id/tv_thinking_header"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="6dp"
-                    android:layout_weight="1"
-                    android:text="@string/thinking_process_title"
-                    android:textSize="12sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:id="@+id/tv_thinking_toggle"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/thinking_process_toggle_show"
-                    android:textSize="11sp" />
-            </LinearLayout>
-
-            <TextView
-                android:id="@+id/tv_thinking_content"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                android:lineSpacingExtra="2dp"
-                android:textIsSelectable="true"
-                android:textSize="12sp"
-                android:visibility="gone" />
-        </LinearLayout>
+    <!-- Dynamic Content-Hugging Chat Bubble -->
+    <com.chatai.an.presentation.chat.MaxWidthLinearLayout
+        android:id="@+id/message_bubble_container"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingHorizontal="14dp"
+        android:paddingVertical="9dp">
 
         <!-- Attachments inside message -->
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/rv_message_attachments"
-            android:layout_width="match_parent"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
             android:orientation="horizontal"
             android:visibility="gone" />
 
         <!-- Dynamic Markdown, Table & Code Block container -->
         <LinearLayout
             android:id="@+id/markdown_segments_container"
-            android:layout_width="match_parent"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
             android:orientation="vertical" />
+    </com.chatai.an.presentation.chat.MaxWidthLinearLayout>
 
-        <!-- Message Footer Row -->
-        <LinearLayout
-            android:layout_width="match_parent"
+    <!-- Compact Metadata & Action Strip (outside bubble so it never inflates bubble size) -->
+    <LinearLayout
+        android:id="@+id/layout_message_footer"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/tv_message_time"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:gravity="end|center_vertical"
-            android:orientation="horizontal">
+            android:textSize="10.5sp"
+            tools:text="12:20" />
 
-            <TextView
-                android:id="@+id/tv_message_time"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:textSize="11sp"
-                tools:text="12:20" />
+        <TextView
+            android:id="@+id/tv_message_edited"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="5dp"
+            android:text="@string/edited_label"
+            android:textSize="10sp"
+            android:visibility="gone" />
 
-            <TextView
-                android:id="@+id/tv_message_tokens"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
-                android:layout_weight="1"
-                android:ellipsize="end"
-                android:maxLines="1"
-                android:textSize="10sp"
-                android:visibility="gone"
-                tools:text="142 in · 310 out"
-                tools:visibility="visible" />
+        <TextView
+            android:id="@+id/tv_message_deep_thinking"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="5dp"
+            android:paddingHorizontal="5dp"
+            android:paddingVertical="1dp"
+            android:text="@string/deep_thinking_enabled_badge"
+            android:textSize="9.5sp"
+            android:textStyle="bold"
+            android:visibility="gone" />
 
-            <View
-                android:id="@+id/spacer_footer_actions"
-                android:layout_width="0dp"
-                android:layout_height="1dp"
-                android:layout_weight="1" />
+        <TextView
+            android:id="@+id/tv_message_tokens"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="6dp"
+            android:ellipsize="end"
+            android:maxWidth="145dp"
+            android:maxLines="1"
+            android:textSize="10sp"
+            android:visibility="gone"
+            tools:text="142 in · 310 out"
+            tools:visibility="visible" />
 
-            <ImageButton
-                android:id="@+id/btn_msg_copy"
-                android:layout_width="36dp"
-                android:layout_height="36dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="@string/action_copy"
-                android:padding="8dp"
-                android:src="@drawable/ic_copy" />
+        <View
+            android:id="@+id/spacer_footer_actions"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:visibility="gone" />
 
-            <ImageButton
-                android:id="@+id/btn_msg_edit"
-                android:layout_width="36dp"
-                android:layout_height="36dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="@string/action_edit"
-                android:padding="8dp"
-                android:src="@drawable/ic_edit" />
+        <ImageButton
+            android:id="@+id/btn_msg_copy"
+            android:layout_width="32dp"
+            android:layout_height="30dp"
+            android:layout_marginStart="4dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/action_copy"
+            android:padding="7dp"
+            android:scaleType="centerInside"
+            android:src="@drawable/ic_copy" />
 
-            <ImageButton
-                android:id="@+id/btn_msg_delete"
-                android:layout_width="36dp"
-                android:layout_height="36dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="@string/action_delete"
-                android:padding="8dp"
-                android:src="@drawable/ic_delete" />
-        </LinearLayout>
+        <ImageButton
+            android:id="@+id/btn_msg_edit"
+            android:layout_width="32dp"
+            android:layout_height="30dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/action_edit"
+            android:padding="7dp"
+            android:scaleType="centerInside"
+            android:src="@drawable/ic_edit" />
+
+        <ImageButton
+            android:id="@+id/btn_msg_delete"
+            android:layout_width="32dp"
+            android:layout_height="30dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/action_delete"
+            android:padding="7dp"
+            android:scaleType="centerInside"
+            android:src="@drawable/ic_delete" />
     </LinearLayout>
 </LinearLayout>

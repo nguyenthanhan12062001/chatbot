@@ -1,11 +1,19 @@
 package com.chatai.an.presentation.settings;
 
+import android.Manifest;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
@@ -18,16 +26,19 @@ import com.chatai.an.databinding.ActivitySettingsBinding;
 import com.chatai.an.domain.model.AiModel;
 import com.chatai.an.domain.model.AppLanguage;
 import com.chatai.an.domain.model.ModelCapability;
+import com.chatai.an.domain.model.TerminalBackend;
 import com.chatai.an.domain.model.ThemeConfig;
 import com.chatai.an.domain.model.ThemeMode;
 import com.chatai.an.domain.model.ThemePalette;
 import com.chatai.an.domain.model.ThemePreset;
 import com.chatai.an.presentation.agent.AgentActivity;
+import com.chatai.an.presentation.bubble.ChatBubbleService;
 import com.chatai.an.presentation.common.AppViewModelFactory;
 import com.chatai.an.presentation.common.UiFormatters;
 import com.chatai.an.presentation.memory.MemoryManagementActivity;
 import com.chatai.an.presentation.model.ModelSelectorBottomSheet;
 import com.chatai.an.presentation.provider.ProviderSettingsActivity;
+import com.chatai.an.presentation.terminal.TerminalActivity;
 import com.chatai.an.presentation.themestudio.ThemeStudioActivity;
 import com.chatai.an.theme.GradientDrawableFactory;
 import com.chatai.an.theme.ThemeApplier;
@@ -40,6 +51,28 @@ public class SettingsActivity extends AppCompatActivity {
     private SettingsViewModel viewModel;
     private ThemeConfig currentThemeConfig;
     private AppLanguage currentLanguage = AppLanguage.ENGLISH;
+    private TerminalBackend currentTerminalBackend = TerminalBackend.APP_TERMINAL;
+    private boolean pendingBubbleEnableAfterPerm = false;
+
+    private final ActivityResultLauncher<Intent> overlayPermissionLauncher =
+            registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
+                if (pendingBubbleEnableAfterPerm) {
+                    pendingBubbleEnableAfterPerm = false;
+                    if (ChatBubbleService.canDrawOverlays(this)) {
+                        enableChatBubbleWithNotifCheck();
+                    } else {
+                        viewModel.setBubbleEnabled(false);
+                        binding.switchChatBubble.setChecked(false);
+                    }
+                }
+            });
+
+    private final ActivityResultLauncher<String> notificationPermissionLauncher =
+            registerForActivityResult(new ActivityResultContracts.RequestPermission(), granted -> {
+                if (ChatBubbleService.canDrawOverlays(this)) {
+                    startBubbleNow();
+                }
+            });
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -73,6 +106,10 @@ public class SettingsActivity extends AppCompatActivity {
         binding.rowIntegrationsHub.setOnClickListener(v ->
                 startActivity(new Intent(this, IntegrationsHubActivity.class))
         );
+        binding.rowOpenTerminal.setOnClickListener(v ->
+                startActivity(new Intent(this, TerminalActivity.class))
+        );
+        binding.rowTerminalBackend.setOnClickListener(v -> showTerminalBackendDialog());
 
         binding.rowThemeMode.setOnClickListener(v -> showThemeModeDialog());
         binding.rowThemePreset.setOnClickListener(v -> showThemePresetDialog());
@@ -93,6 +130,21 @@ public class SettingsActivity extends AppCompatActivity {
         binding.switchConfirmDelete.setOnCheckedChangeListener((buttonView, isChecked) -> {
             if (buttonView.isPressed()) {
                 viewModel.setConfirmBeforeDelete(isChecked);
+            }
+        });
+        binding.switchChatBubble.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            if (!buttonView.isPressed()) return;
+            if (isChecked) {
+                if (!ChatBubbleService.canDrawOverlays(this)) {
+                    buttonView.setChecked(false);
+                    showOverlayPermissionDialog();
+                } else {
+                    enableChatBubbleWithNotifCheck();
+                }
+            } else {
+                viewModel.setBubbleEnabled(false);
+                ChatBubbleService.stop(this);
+                Toast.makeText(this, R.string.bubble_stopped_notice, Toast.LENGTH_SHORT).show();
             }
         });
 
@@ -120,6 +172,49 @@ public class SettingsActivity extends AppCompatActivity {
         observeData();
     }
 
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (binding != null && viewModel != null) {
+            boolean runningOrEnabled = ChatBubbleService.isRunning()
+                    && ChatBubbleService.canDrawOverlays(this);
+            binding.switchChatBubble.setChecked(runningOrEnabled);
+        }
+    }
+
+    private void showOverlayPermissionDialog() {
+        new MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.bubble_permission_title)
+                .setMessage(R.string.bubble_permission_message)
+                .setNegativeButton(R.string.action_cancel, null)
+                .setPositiveButton(R.string.bubble_permission_grant, (d, w) -> {
+                    pendingBubbleEnableAfterPerm = true;
+                    Intent intent = new Intent(
+                            Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                            Uri.parse("package:" + getPackageName())
+                    );
+                    overlayPermissionLauncher.launch(intent);
+                })
+                .show();
+    }
+
+    private void enableChatBubbleWithNotifCheck() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                && ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+                != PackageManager.PERMISSION_GRANTED) {
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS);
+            return;
+        }
+        startBubbleNow();
+    }
+
+    private void startBubbleNow() {
+        viewModel.setBubbleEnabled(true);
+        ChatBubbleService.start(this, null, false);
+        binding.switchChatBubble.setChecked(true);
+        Toast.makeText(this, R.string.bubble_started_notice, Toast.LENGTH_LONG).show();
+    }
+
     private void observeData() {
         viewModel.getActiveTheme().observe(this, config -> {
             currentThemeConfig = config;
@@ -139,9 +234,19 @@ public class SettingsActivity extends AppCompatActivity {
 
         viewModel.getSettings().observe(this, settings -> {
             currentLanguage = settings.getLanguage();
+            currentTerminalBackend = settings.getPreferredTerminalBackend();
             binding.tvLanguageValue.setText(currentLanguage.getNativeName());
+            binding.tvTerminalBackendValue.setText(
+                    currentTerminalBackend == TerminalBackend.TERMUX
+                            ? getString(R.string.terminal_backend_termux_desc)
+                            : getString(R.string.terminal_backend_app_desc)
+            );
             binding.switchAutoTitle.setChecked(settings.isAutoTitleFromFirstMessage());
             binding.switchConfirmDelete.setChecked(settings.isConfirmBeforeDelete());
+            binding.switchChatBubble.setChecked(
+                    (settings.isBubbleEnabled() || ChatBubbleService.isRunning())
+                            && ChatBubbleService.canDrawOverlays(this)
+            );
         });
     }
 
@@ -194,6 +299,26 @@ public class SettingsActivity extends AppCompatActivity {
                 .show();
     }
 
+    private void showTerminalBackendDialog() {
+        TerminalBackend[] options = new TerminalBackend[]{
+                TerminalBackend.APP_TERMINAL,
+                TerminalBackend.TERMUX
+        };
+        String[] labels = new String[]{
+                getString(R.string.terminal_backend_app) + "\n(" + getString(R.string.terminal_backend_app_desc) + ")",
+                getString(R.string.terminal_backend_termux) + "\n(" + getString(R.string.terminal_backend_termux_desc) + ")"
+        };
+        int checked = currentTerminalBackend == TerminalBackend.TERMUX ? 1 : 0;
+        new MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.terminal_backend_choose_title)
+                .setSingleChoiceItems(labels, checked, (dialog, which) -> {
+                    viewModel.setPreferredTerminalBackend(options[which]);
+                    dialog.dismiss();
+                })
+                .setNegativeButton(R.string.action_cancel, null)
+                .show();
+    }
+
     private void showLanguageDialog() {
         AppLanguage[] languages = AppLanguage.values();
         String[] labels = new String[languages.length];
@@ -238,11 +363,14 @@ public class SettingsActivity extends AppCompatActivity {
         binding.divPlatform1.setBackgroundColor(border);
         binding.divPlatform2.setBackgroundColor(border);
         binding.divPlatform3.setBackgroundColor(border);
+        binding.divPlatform4.setBackgroundColor(border);
+        binding.divPlatform5.setBackgroundColor(border);
         binding.divAppearance1.setBackgroundColor(border);
         binding.divAppearance2.setBackgroundColor(border);
         binding.divModels1.setBackgroundColor(border);
         binding.divConv1.setBackgroundColor(border);
         binding.divConv2.setBackgroundColor(border);
+        binding.divConv3.setBackgroundColor(border);
         binding.divGeneral1.setBackgroundColor(border);
         binding.divGeneral2.setBackgroundColor(border);
 
@@ -257,14 +385,22 @@ public class SettingsActivity extends AppCompatActivity {
         binding.tvAgentDesc.setTextColor(secondaryText);
         binding.tvHubLabel.setTextColor(primaryText);
         binding.tvHubDesc.setTextColor(secondaryText);
+        binding.tvTerminalRowLabel.setTextColor(primaryText);
+        binding.tvTerminalRowDesc.setTextColor(secondaryText);
+        binding.tvTerminalBackendTitle.setTextColor(primaryText);
+        binding.tvTerminalBackendValue.setTextColor(secondaryText);
         binding.ivProvidersIcon.setColorFilter(sectionColor);
         binding.ivMemoryIcon.setColorFilter(palette.getSecondaryColor());
         binding.ivAgentIcon.setColorFilter(sectionColor);
         binding.ivHubIcon.setColorFilter(palette.getSecondaryColor());
+        binding.ivTerminalIcon.setColorFilter(sectionColor);
+        binding.ivTerminalBackendIcon.setColorFilter(palette.getSecondaryColor());
         binding.ivProvidersArrow.setColorFilter(secondaryText);
         binding.ivMemoryArrow.setColorFilter(secondaryText);
         binding.ivAgentArrow.setColorFilter(secondaryText);
         binding.ivHubArrow.setColorFilter(secondaryText);
+        binding.ivTerminalArrow.setColorFilter(secondaryText);
+        binding.ivTerminalBackendArrow.setColorFilter(secondaryText);
 
         binding.tvThemeModeLabel.setTextColor(primaryText);
         binding.tvThemeModeValue.setTextColor(secondaryText);
@@ -282,6 +418,8 @@ public class SettingsActivity extends AppCompatActivity {
         binding.tvAutoTitleDesc.setTextColor(secondaryText);
         binding.tvConfirmDeleteLabel.setTextColor(primaryText);
         binding.tvConfirmDeleteDesc.setTextColor(secondaryText);
+        binding.tvChatBubbleLabel.setTextColor(primaryText);
+        binding.tvChatBubbleDesc.setTextColor(secondaryText);
         binding.tvClearHistoryDesc.setTextColor(secondaryText);
 
         binding.tvLanguageLabel.setTextColor(primaryText);

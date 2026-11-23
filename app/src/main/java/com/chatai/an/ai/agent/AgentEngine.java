@@ -350,12 +350,12 @@ public class AgentEngine {
     private String buildAgentSystemPrompt(AgentMode mode, String workspacePath, List<ToolDefinition> allowedTools) {
         StringBuilder sb = new StringBuilder();
         if (mode == AgentMode.CODING) {
-            sb.append("You are ChatAI Coding Agent Engine. Inspect files, search codebases, make surgical edits, and run Termux or ADB diagnostics to complete software engineering goals accurately.\n");
+            sb.append("Your name is AnAI (Coding Agent Engine). Inspect files, search codebases, make surgical edits, and run Termux or ADB diagnostics to complete software engineering goals accurately.\n");
             if (!workspacePath.isEmpty()) {
                 sb.append("Active Workspace: ").append(workspacePath).append("\n");
             }
         } else {
-            sb.append("You are ChatAI Agent Engine. Solve the user's goal step by step using the enabled tools when needed.\n");
+            sb.append("Your name is AnAI. Solve the user's goal step by step using the enabled tools when needed.\n");
         }
         sb.append("Available tools:\n")
                 .append(ToolRegistry.formatCatalogSummary(allowedTools))

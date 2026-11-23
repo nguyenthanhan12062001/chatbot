@@ -263,10 +263,14 @@ public class TermuxIntegrationManager {
             runIntent.putExtra(EXTRA_SESSION_ACTION, "0");
             runIntent.putExtra(EXTRA_PENDING_INTENT, pendingIntent);
 
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                context.startForegroundService(runIntent);
-            } else {
+            try {
                 context.startService(runIntent);
+            } catch (Exception se) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    context.startForegroundService(runIntent);
+                } else {
+                    throw se;
+                }
             }
 
             int timeout = Math.max(5, Math.min(120, timeoutSeconds));

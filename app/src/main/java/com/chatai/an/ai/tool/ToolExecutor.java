@@ -7,6 +7,7 @@ import com.chatai.an.ai.core.ExecutionHandle;
 import com.chatai.an.ai.integration.files.WorkspaceFileManager;
 import com.chatai.an.core.AppExecutors;
 import com.chatai.an.domain.model.AppSettings;
+import com.chatai.an.domain.model.TerminalBackend;
 import com.chatai.an.domain.model.ToolCategory;
 import com.chatai.an.domain.model.ToolDefinition;
 import com.chatai.an.domain.model.ToolPermission;
@@ -161,7 +162,12 @@ public class ToolExecutor {
             return settings == null || settings.isConfirmMutatingTools();
         }
 
-        if (def.getCategory() == ToolCategory.TERMUX || def.getCategory() == ToolCategory.ADB_SHIZUKU) {
+        if (def.getCategory() == ToolCategory.TERMINAL
+                || def.getCategory() == ToolCategory.TERMUX) {
+            return false;
+        }
+
+        if (def.getCategory() == ToolCategory.ADB_SHIZUKU) {
             return settings == null || settings.isConfirmShellAndExternalTools() || def.getPermission() == ToolPermission.REQUIRE_CONFIRMATION;
         }
 
@@ -179,6 +185,12 @@ public class ToolExecutor {
         if ("fs_write_file".equals(toolName)) return "Overwrite an existing non-empty file";
         if ("fs_edit_file".equals(toolName)) return "Modify existing file content";
         if ("download_file".equals(toolName)) return "Download external file from URL (no auto-execution/install)";
+        if (toolName.startsWith("terminal_")) {
+            TerminalBackend resolved = TerminalTools.resolveTargetBackend(args, settingsRepository);
+            return resolved == TerminalBackend.TERMUX
+                    ? "Execute command/script in Termux terminal backend"
+                    : "Execute shell command/script in In-App Terminal";
+        }
         if (toolName.startsWith("termux_")) return "Execute command/script inside Termux";
         if (toolName.startsWith("adb_")) return "Execute privileged Shizuku/ADB operation";
         if ("http_post".equals(toolName)) return "Send HTTP POST request to external endpoint";

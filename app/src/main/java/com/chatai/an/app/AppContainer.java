@@ -10,6 +10,7 @@ import com.chatai.an.ai.integration.download.DownloadToolManager;
 import com.chatai.an.ai.integration.files.WorkspaceFileManager;
 import com.chatai.an.ai.integration.net.InternetAccessManager;
 import com.chatai.an.ai.integration.shizuku.ShizukuIntegrationManager;
+import com.chatai.an.ai.integration.terminal.AppTerminalManager;
 import com.chatai.an.ai.integration.termux.TermuxIntegrationManager;
 import com.chatai.an.ai.local.DeviceCapabilityChecker;
 import com.chatai.an.ai.local.LocalAiManager;
@@ -27,6 +28,7 @@ import com.chatai.an.ai.tool.FileSystemTools;
 import com.chatai.an.ai.tool.InternetTools;
 import com.chatai.an.ai.tool.RecallTool;
 import com.chatai.an.ai.tool.RememberTool;
+import com.chatai.an.ai.tool.TerminalTools;
 import com.chatai.an.ai.tool.TermuxTools;
 import com.chatai.an.ai.tool.ToolExecutor;
 import com.chatai.an.ai.tool.ToolRegistry;
@@ -87,6 +89,7 @@ public class AppContainer {
 
     private final WorkspaceFileManager workspaceFileManager;
     private final InternetAccessManager internetAccessManager;
+    private final AppTerminalManager appTerminalManager;
     private final TermuxIntegrationManager termuxIntegrationManager;
     private final ShizukuIntegrationManager shizukuIntegrationManager;
     private final DownloadToolManager downloadToolManager;
@@ -134,6 +137,7 @@ public class AppContainer {
         // Real Subsystem & Device Integration Managers
         this.workspaceFileManager = new WorkspaceFileManager(appContext, preferencesManager, settingsRepository);
         this.internetAccessManager = new InternetAccessManager(appContext, okHttpClient);
+        this.appTerminalManager = new AppTerminalManager(appContext, workspaceFileManager);
         this.termuxIntegrationManager = new TermuxIntegrationManager(appContext);
         this.shizukuIntegrationManager = new ShizukuIntegrationManager(appContext);
         this.workspaceFileManager.setShizukuManager(this.shizukuIntegrationManager);
@@ -148,6 +152,7 @@ public class AppContainer {
         this.toolRegistry.register(new RememberTool(memoryRepository));
         this.toolRegistry.register(new RecallTool(memoryRepository));
         FileSystemTools.registerAll(this.toolRegistry, this.workspaceFileManager);
+        TerminalTools.registerAll(this.toolRegistry, this.appTerminalManager, this.termuxIntegrationManager, this.settingsRepository);
         TermuxTools.registerAll(this.toolRegistry, this.termuxIntegrationManager);
         AdbShizukuTools.registerAll(this.toolRegistry, this.shizukuIntegrationManager);
         InternetTools.registerAll(this.toolRegistry, this.okHttpClient, this.settingsRepository);
@@ -163,6 +168,7 @@ public class AppContainer {
                 settingsRepository,
                 toolRegistry,
                 workspaceFileManager,
+                appTerminalManager,
                 termuxIntegrationManager,
                 shizukuIntegrationManager,
                 internetAccessManager,
@@ -274,6 +280,10 @@ public class AppContainer {
 
     public InternetAccessManager getInternetAccessManager() {
         return internetAccessManager;
+    }
+
+    public AppTerminalManager getAppTerminalManager() {
+        return appTerminalManager;
     }
 
     public TermuxIntegrationManager getTermuxIntegrationManager() {

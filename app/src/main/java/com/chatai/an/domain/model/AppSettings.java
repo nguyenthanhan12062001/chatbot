@@ -22,6 +22,8 @@ public class AppSettings {
     private final String activeWorkspacePath;
     private final String downloadDestinationPath;
     private final boolean allowShizukuFileFallback;
+    private final boolean bubbleEnabled;
+    private final TerminalBackend preferredTerminalBackend;
     private final Set<String> disabledToolNames;
 
     public AppSettings(
@@ -47,6 +49,8 @@ public class AppSettings {
                 "",
                 "",
                 false,
+                false,
+                TerminalBackend.APP_TERMINAL,
                 Collections.emptySet()
         );
     }
@@ -69,6 +73,89 @@ public class AppSettings {
             boolean allowShizukuFileFallback,
             Set<String> disabledToolNames
     ) {
+        this(
+                selectedModelId,
+                deepThinkingPreferred,
+                confirmBeforeDelete,
+                autoTitleFromFirstMessage,
+                language,
+                defaultAgentMode,
+                agentMaxSteps,
+                toolTimeoutSeconds,
+                chatToolsEnabled,
+                confirmMutatingTools,
+                confirmShellAndExternalTools,
+                preferredSearchEngine,
+                activeWorkspacePath,
+                downloadDestinationPath,
+                allowShizukuFileFallback,
+                false,
+                TerminalBackend.APP_TERMINAL,
+                disabledToolNames
+        );
+    }
+
+    public AppSettings(
+            String selectedModelId,
+            boolean deepThinkingPreferred,
+            boolean confirmBeforeDelete,
+            boolean autoTitleFromFirstMessage,
+            AppLanguage language,
+            AgentMode defaultAgentMode,
+            int agentMaxSteps,
+            int toolTimeoutSeconds,
+            boolean chatToolsEnabled,
+            boolean confirmMutatingTools,
+            boolean confirmShellAndExternalTools,
+            String preferredSearchEngine,
+            String activeWorkspacePath,
+            String downloadDestinationPath,
+            boolean allowShizukuFileFallback,
+            boolean bubbleEnabled,
+            Set<String> disabledToolNames
+    ) {
+        this(
+                selectedModelId,
+                deepThinkingPreferred,
+                confirmBeforeDelete,
+                autoTitleFromFirstMessage,
+                language,
+                defaultAgentMode,
+                agentMaxSteps,
+                toolTimeoutSeconds,
+                chatToolsEnabled,
+                confirmMutatingTools,
+                confirmShellAndExternalTools,
+                preferredSearchEngine,
+                activeWorkspacePath,
+                downloadDestinationPath,
+                allowShizukuFileFallback,
+                bubbleEnabled,
+                TerminalBackend.APP_TERMINAL,
+                disabledToolNames
+        );
+    }
+
+    public AppSettings(
+            String selectedModelId,
+            boolean deepThinkingPreferred,
+            boolean confirmBeforeDelete,
+            boolean autoTitleFromFirstMessage,
+            AppLanguage language,
+            AgentMode defaultAgentMode,
+            int agentMaxSteps,
+            int toolTimeoutSeconds,
+            boolean chatToolsEnabled,
+            boolean confirmMutatingTools,
+            boolean confirmShellAndExternalTools,
+            String preferredSearchEngine,
+            String activeWorkspacePath,
+            String downloadDestinationPath,
+            boolean allowShizukuFileFallback,
+            boolean bubbleEnabled,
+            TerminalBackend preferredTerminalBackend,
+            Set<String> disabledToolNames
+    ) {
         this.selectedModelId = selectedModelId;
         this.deepThinkingPreferred = deepThinkingPreferred;
         this.confirmBeforeDelete = confirmBeforeDelete;
@@ -84,6 +171,8 @@ public class AppSettings {
         this.activeWorkspacePath = activeWorkspacePath != null ? activeWorkspacePath : "";
         this.downloadDestinationPath = downloadDestinationPath != null ? downloadDestinationPath : "";
         this.allowShizukuFileFallback = allowShizukuFileFallback;
+        this.bubbleEnabled = bubbleEnabled;
+        this.preferredTerminalBackend = preferredTerminalBackend != null ? preferredTerminalBackend : TerminalBackend.APP_TERMINAL;
         this.disabledToolNames = disabledToolNames == null
                 ? Collections.emptySet()
                 : Collections.unmodifiableSet(new HashSet<>(disabledToolNames));
@@ -147,6 +236,14 @@ public class AppSettings {
 
     public boolean isAllowShizukuFileFallback() {
         return allowShizukuFileFallback;
+    }
+
+    public boolean isBubbleEnabled() {
+        return bubbleEnabled;
+    }
+
+    public TerminalBackend getPreferredTerminalBackend() {
+        return preferredTerminalBackend;
     }
 
     public Set<String> getDisabledToolNames() {

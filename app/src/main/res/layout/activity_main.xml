@@ -92,6 +92,15 @@
             </FrameLayout>
 
             <ImageButton
+                android:id="@+id/btn_chat_bubble"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/cd_chat_bubble"
+                android:padding="12dp"
+                android:src="@drawable/ic_bubble_chat" />
+
+            <ImageButton
                 android:id="@+id/btn_top_new_chat"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
@@ -278,29 +287,32 @@
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:clipToPadding="false"
-                android:paddingHorizontal="12dp"
+                android:paddingHorizontal="10dp"
                 android:paddingTop="8dp"
-                android:paddingBottom="16dp"
+                android:paddingBottom="14dp"
                 android:visibility="gone" />
         </FrameLayout>
 
-        <!-- Live AI Execution Status Banner -->
+        <!-- Compact Live AI Execution Status Pill -->
         <LinearLayout
             android:id="@+id/execution_status_banner"
-            android:layout_width="match_parent"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginHorizontal="16dp"
+            android:layout_marginBottom="4dp"
             android:gravity="center"
             android:orientation="horizontal"
-            android:paddingHorizontal="16dp"
-            android:paddingVertical="5dp"
+            android:paddingHorizontal="12dp"
+            android:paddingVertical="4dp"
             android:visibility="gone">
 
             <ProgressBar
                 android:id="@+id/pb_execution_status"
                 style="?android:attr/progressBarStyleSmall"
-                android:layout_width="16dp"
-                android:layout_height="16dp"
-                android:layout_marginEnd="8dp" />
+                android:layout_width="14dp"
+                android:layout_height="14dp"
+                android:layout_marginEnd="6dp" />
 
             <TextView
                 android:id="@+id/tv_execution_status"
@@ -308,7 +320,7 @@
                 android:layout_height="wrap_content"
                 android:ellipsize="end"
                 android:maxLines="1"
-                android:textSize="12sp"
+                android:textSize="11.5sp"
                 android:textStyle="bold"
                 tools:text="Streaming response…" />
         </LinearLayout>
@@ -702,6 +714,75 @@
                         android:ellipsize="end"
                         android:maxLines="1"
                         android:text="@string/sidebar_providers"
+                        android:textSize="12sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Terminal & Control Hub Quick Row -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:orientation="horizontal">
+
+                <LinearLayout
+                    android:id="@+id/btn_sidebar_terminal"
+                    android:layout_width="0dp"
+                    android:layout_height="48dp"
+                    android:layout_marginEnd="6dp"
+                    android:layout_weight="1"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center"
+                    android:orientation="horizontal"
+                    android:paddingHorizontal="10dp">
+
+                    <ImageView
+                        android:id="@+id/iv_sidebar_terminal"
+                        android:layout_width="16dp"
+                        android:layout_height="16dp"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_terminal" />
+
+                    <TextView
+                        android:id="@+id/tv_sidebar_terminal"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="6dp"
+                        android:ellipsize="end"
+                        android:maxLines="1"
+                        android:text="@string/sidebar_terminal"
+                        android:textSize="12sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/btn_sidebar_hub"
+                    android:layout_width="0dp"
+                    android:layout_height="48dp"
+                    android:layout_weight="1"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center"
+                    android:orientation="horizontal"
+                    android:paddingHorizontal="10dp">
+
+                    <ImageView
+                        android:id="@+id/iv_sidebar_hub"
+                        android:layout_width="16dp"
+                        android:layout_height="16dp"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_tune" />
+
+                    <TextView
+                        android:id="@+id/tv_sidebar_hub"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="6dp"
+                        android:ellipsize="end"
+                        android:maxLines="1"
+                        android:text="@string/hub_title"
                         android:textSize="12sp"
                         android:textStyle="bold" />
                 </LinearLayout>

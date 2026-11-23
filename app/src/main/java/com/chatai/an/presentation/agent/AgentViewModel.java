@@ -141,6 +141,14 @@ public class AgentViewModel extends ViewModel {
         refreshWorkspacePath();
     }
 
+    public String getDefaultWorkspacePath() {
+        return workspaceFileManager != null ? workspaceFileManager.getDefaultWorkspaceDir().getAbsolutePath() : "";
+    }
+
+    public List<WorkspaceFileManager.GrantedFolder> getGrantedSafFolders() {
+        return workspaceFileManager != null ? workspaceFileManager.refreshGrantedFolders() : Collections.emptyList();
+    }
+
     public LiveData<List<ToolExecutor.ActiveToolExecution>> getLiveToolExecutions() {
         return toolExecutor != null
                 ? toolExecutor.observeExecutions()

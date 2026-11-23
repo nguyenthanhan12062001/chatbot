@@ -36,6 +36,15 @@
             android:textSize="20sp"
             android:textStyle="bold" />
 
+        <ImageButton
+            android:id="@+id/btn_agent_terminal"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/sidebar_terminal"
+            android:padding="12dp"
+            android:src="@drawable/ic_terminal" />
+
         <TextView
             android:id="@+id/btn_agent_model"
             android:layout_width="wrap_content"

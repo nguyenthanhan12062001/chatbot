@@ -324,4 +324,55 @@
     <string name="hub_downloads_test">Tải thử từ URL</string>
     <string name="hub_permissions_title">Quản lý Quyền</string>
     <string name="hub_tools_title">Ma trận Công cụ Dùng chung</string>
+
+    <!-- Bong bóng chat kiểu Messenger -->
+    <string name="assistant_name_anai">AnAI</string>
+    <string name="cd_chat_bubble">Bật/tắt bong bóng chat nổi</string>
+    <string name="settings_chat_bubble">Bong bóng chat nổi (kiểu Messenger)</string>
+    <string name="settings_chat_bubble_desc">Hiển thị bong bóng AnAI nổi trên các ứng dụng khác để trò chuyện nhanh</string>
+    <string name="bubble_permission_title">Cấp quyền hiển thị trên ứng dụng khác</string>
+    <string name="bubble_permission_message">Để hiển thị bong bóng chat AnAI giống Messenger trên các ứng dụng khác, vui lòng bật quyền \"Hiển thị trên ứng dụng khác\" trong cài đặt hệ thống.</string>
+    <string name="bubble_permission_grant">Mở cài đặt</string>
+    <string name="bubble_started_notice">Đã bật bong bóng chat AnAI. Kéo để di chuyển, chạm để chat hoặc kéo vào dấu X để đóng.</string>
+    <string name="bubble_stopped_notice">Đã tắt bong bóng chat AnAI.</string>
+    <string name="bubble_notif_channel_name">Bong bóng chat AnAI</string>
+    <string name="bubble_notif_channel_desc">Giữ bong bóng chat AnAI hoạt động trên các ứng dụng khác</string>
+    <string name="bubble_notif_title">Bong bóng chat AnAI đang bật</string>
+    <string name="bubble_notif_text">Chạm vào bong bóng nổi để trò chuyện nhanh với AnAI ở mọi nơi.</string>
+    <string name="bubble_notif_action_open">Mở bong bóng</string>
+    <string name="bubble_notif_action_close">Đóng</string>
+    <string name="bubble_open_full_app">Mở trong ứng dụng chính</string>
+    <string name="bubble_minimize">Thu gọn bong bóng</string>
+    <string name="bubble_close">Đóng bong bóng</string>
+    <string name="bubble_empty_title">Chào bạn! Mình là AnAI ✨</string>
+    <string name="bubble_empty_subtitle">Nhắn nhanh bất cứ điều gì ngay tại bong bóng chat này nhé.</string>
+    <string name="bubble_input_hint">Nhắn tin cho AnAI…</string>
+
+    <!-- Terminal tích hợp & Chọn Terminal App / Termux -->
+    <string name="sidebar_terminal">Terminal</string>
+    <string name="terminal_title">Terminal</string>
+    <string name="terminal_backend_app">Terminal App</string>
+    <string name="terminal_backend_termux">Termux</string>
+    <string name="terminal_backend_choose_title">Chọn trình thực thi Terminal</string>
+    <string name="terminal_backend_app_desc">Terminal tích hợp sẵn của App (/system/bin/sh trong workspace)</string>
+    <string name="terminal_backend_termux_desc">Môi trường Termux bên ngoài (com.termux.RUN_COMMAND)</string>
+    <string name="terminal_input_hint">Nhập lệnh shell…</string>
+    <string name="terminal_stdin_hint">Nhập dữ liệu gửi vào tiến trình đang chạy…</string>
+    <string name="terminal_cd_copy">Sao chép nội dung Terminal</string>
+    <string name="terminal_cd_clear">Xóa màn hình Terminal</string>
+    <string name="terminal_cd_run">Thực thi lệnh</string>
+    <string name="terminal_cd_stop">Dừng tiến trình (Ctrl+C)</string>
+    <string name="terminal_cleared_msg">Đã xóa màn hình Terminal</string>
+    <string name="terminal_copied_msg">Đã sao chép nội dung Terminal</string>
+    <string name="terminal_status_app_ready">Terminal App sẵn sàng • %1$s</string>
+    <string name="terminal_status_running">Đang chạy… Nhấn STOP hoặc CTRL+C để dừng</string>
+    <string name="terminal_status_termux_ready">Termux đã sẵn sàng • Chạy lệnh qua RUN_COMMAND API</string>
+    <string name="terminal_status_termux_setup">Termux chưa sẵn sàng (%1$s)</string>
+    <string name="terminal_open_hub">Mở Hub</string>
+    <string name="settings_terminal_open_title">Mở Terminal tích hợp</string>
+    <string name="settings_terminal_open_desc">Thực thi lệnh shell trực tiếp, xem màu ANSI &amp; phím tắt dev</string>
+    <string name="settings_terminal_backend_title">Nguồn thực thi Terminal</string>
+    <string name="hub_terminal_title">Terminal Tích Hợp &amp; Chế Độ Thực Thi</string>
+    <string name="hub_terminal_open">Mở Terminal</string>
+    <string name="hub_terminal_choose_label">Chế độ Terminal mặc định:</string>
 </resources>

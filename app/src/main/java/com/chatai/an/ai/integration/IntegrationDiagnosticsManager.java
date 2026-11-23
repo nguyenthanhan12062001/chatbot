@@ -10,6 +10,7 @@ import com.chatai.an.ai.integration.download.DownloadToolManager;
 import com.chatai.an.ai.integration.files.WorkspaceFileManager;
 import com.chatai.an.ai.integration.net.InternetAccessManager;
 import com.chatai.an.ai.integration.shizuku.ShizukuIntegrationManager;
+import com.chatai.an.ai.integration.terminal.AppTerminalManager;
 import com.chatai.an.ai.integration.termux.TermuxIntegrationManager;
 import com.chatai.an.ai.tool.ToolRegistry;
 import com.chatai.an.domain.model.AppSettings;
@@ -29,6 +30,7 @@ public class IntegrationDiagnosticsManager {
     public enum SubsystemId {
         PROVIDERS_MODELS,
         TOOL_SYSTEM,
+        APP_TERMINAL,
         TERMUX,
         SHIZUKU,
         ADB_TOOLS,
@@ -58,6 +60,7 @@ public class IntegrationDiagnosticsManager {
     private final SettingsRepository settingsRepository;
     private final ToolRegistry toolRegistry;
     private final WorkspaceFileManager fileManager;
+    private final AppTerminalManager appTerminalManager;
     private final TermuxIntegrationManager termuxManager;
     private final ShizukuIntegrationManager shizukuManager;
     private final InternetAccessManager internetManager;
@@ -74,11 +77,38 @@ public class IntegrationDiagnosticsManager {
             InternetAccessManager internetManager,
             DownloadToolManager downloadManager
     ) {
+        this(
+                context,
+                modelRepository,
+                settingsRepository,
+                toolRegistry,
+                fileManager,
+                null,
+                termuxManager,
+                shizukuManager,
+                internetManager,
+                downloadManager
+        );
+    }
+
+    public IntegrationDiagnosticsManager(
+            Context context,
+            ModelRepository modelRepository,
+            SettingsRepository settingsRepository,
+            ToolRegistry toolRegistry,
+            WorkspaceFileManager fileManager,
+            AppTerminalManager appTerminalManager,
+            TermuxIntegrationManager termuxManager,
+            ShizukuIntegrationManager shizukuManager,
+            InternetAccessManager internetManager,
+            DownloadToolManager downloadManager
+    ) {
         this.context = context.getApplicationContext();
         this.modelRepository = modelRepository;
         this.settingsRepository = settingsRepository;
         this.toolRegistry = toolRegistry;
         this.fileManager = fileManager;
+        this.appTerminalManager = appTerminalManager;
         this.termuxManager = termuxManager;
         this.shizukuManager = shizukuManager;
         this.internetManager = internetManager;
@@ -111,7 +141,18 @@ public class IntegrationDiagnosticsManager {
                 enabledTools + "/" + allTools.size() + " tools enabled • Timeout " + settings.getToolTimeoutSeconds() + "s"
         ));
 
-        // 3. Termux
+        // 3. In-App Terminal + Backend Preference
+        if (appTerminalManager != null) {
+            AppTerminalManager.TerminalState appTermState = appTerminalManager.inspectState();
+            list.add(new SubsystemHealth(
+                    SubsystemId.APP_TERMINAL,
+                    "In-App Terminal (" + settings.getPreferredTerminalBackend().getDefaultLabel() + ")",
+                    appTermState.status,
+                    appTermState.detail
+            ));
+        }
+
+        // 4. Termux
         TermuxIntegrationManager.TermuxState tState = termuxManager.inspectState();
         list.add(new SubsystemHealth(
                 SubsystemId.TERMUX,

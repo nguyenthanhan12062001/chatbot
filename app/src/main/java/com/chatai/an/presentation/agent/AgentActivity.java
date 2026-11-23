@@ -1,12 +1,17 @@
 package com.chatai.an.presentation.agent;
 
+import android.content.Intent;
 import android.os.Bundle;
+import android.net.Uri;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
@@ -14,6 +19,7 @@ import androidx.core.view.WindowInsetsCompat;
 import androidx.lifecycle.ViewModelProvider;
 
 import com.chatai.an.R;
+import com.chatai.an.ai.integration.files.WorkspaceFileManager;
 import com.chatai.an.ai.tool.ToolExecutor;
 import com.chatai.an.app.ChatAiApplication;
 import com.chatai.an.databinding.ActivityAgentBinding;
@@ -25,11 +31,13 @@ import com.chatai.an.domain.model.ThemePalette;
 import com.chatai.an.domain.model.ToolDefinition;
 import com.chatai.an.presentation.common.AppViewModelFactory;
 import com.chatai.an.presentation.model.ModelSelectorBottomSheet;
+import com.chatai.an.presentation.terminal.TerminalActivity;
 import com.chatai.an.theme.GradientDrawableFactory;
 import com.chatai.an.theme.ThemeApplier;
 import com.chatai.an.theme.ThemeManager;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class AgentActivity extends AppCompatActivity {
@@ -38,6 +46,16 @@ public class AgentActivity extends AppCompatActivity {
     private AgentViewModel viewModel;
     private ThemePalette palette;
     private AgentMode currentMode = AgentMode.CHAT;
+
+    private final ActivityResultLauncher<Uri> safTreeLauncher =
+            registerForActivityResult(new ActivityResultContracts.OpenDocumentTree(), uri -> {
+                if (uri != null) {
+                    ChatAiApplication app = (ChatAiApplication) getApplication();
+                    String safPath = app.getAppContainer().getWorkspaceFileManager().registerSafTreeUri(uri);
+                    viewModel.setWorkspacePath(safPath);
+                    Toast.makeText(this, "Workspace set to SAF folder: " + safPath, Toast.LENGTH_SHORT).show();
+                }
+            });
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -58,6 +76,9 @@ public class AgentActivity extends AppCompatActivity {
                 .get(AgentViewModel.class);
 
         binding.btnAgentBack.setOnClickListener(v -> finish());
+        binding.btnAgentTerminal.setOnClickListener(v ->
+                startActivity(new Intent(this, TerminalActivity.class))
+        );
         binding.btnAgentModel.setOnClickListener(v -> {
             ModelSelectorBottomSheet sheet = new ModelSelectorBottomSheet();
             sheet.show(getSupportFragmentManager(), "agent_model_selector");
@@ -156,21 +177,56 @@ public class AgentActivity extends AppCompatActivity {
     }
 
     private void showWorkspaceDialog() {
+        List<WorkspaceFileManager.GrantedFolder> safFolders = viewModel.getGrantedSafFolders();
+        List<String> optionsList = new ArrayList<>();
+        List<Runnable> actionsList = new ArrayList<>();
+
+        String defaultWs = viewModel.getDefaultWorkspacePath();
+        optionsList.add("Default App Workspace\n(" + defaultWs + ")");
+        actionsList.add(() -> viewModel.setWorkspacePath(defaultWs));
+
+        for (WorkspaceFileManager.GrantedFolder f : safFolders) {
+            optionsList.add("SAF Folder: " + f.alias + "\nsaf://" + f.alias);
+            actionsList.add(() -> viewModel.setWorkspacePath("saf://" + f.alias));
+        }
+
+        optionsList.add("📁 Grant New SAF Folder...");
+        actionsList.add(() -> safTreeLauncher.launch(null));
+
+        optionsList.add("✏️ Enter Custom Path Manually...");
+        actionsList.add(() -> showCustomPathInputDialog());
+
+        String[] choices = optionsList.toArray(new String[0]);
+        new MaterialAlertDialogBuilder(this)
+                .setTitle("Select Coding Agent Workspace")
+                .setItems(choices, (dialog, which) -> {
+                    if (which >= 0 && which < actionsList.size()) {
+                        actionsList.get(which).run();
+                    }
+                })
+                .setNegativeButton(R.string.action_cancel, null)
+                .show();
+    }
+
+    private void showCustomPathInputDialog() {
         EditText input = new EditText(this);
         String current = viewModel.getActiveWorkspacePath().getValue();
         input.setText(current != null ? current : "");
-        input.setHint(R.string.agent_workspace_hint);
-        int pad = ThemeApplier.dpToPxInt(this, 20f);
+        input.setHint("/storage/emulated/0/Download/MyProject");
+        int pad = ThemeApplier.dpToPxInt(this, 16f);
         input.setPadding(pad, pad / 2, pad, pad / 2);
 
         new MaterialAlertDialogBuilder(this)
-                .setTitle(R.string.agent_workspace_change)
+                .setTitle("Enter Custom Workspace Path")
                 .setView(input)
-                .setNeutralButton(R.string.agent_workspace_reset, (d, w) -> viewModel.setWorkspacePath(""))
                 .setNegativeButton(R.string.action_cancel, null)
-                .setPositiveButton(R.string.action_save, (d, w) ->
-                        viewModel.setWorkspacePath(input.getText() != null ? input.getText().toString() : "")
-                )
+                .setPositiveButton(R.string.action_save, (d, w) -> {
+                    String path = input.getText() != null ? input.getText().toString().trim() : "";
+                    if (!path.isEmpty()) {
+                        viewModel.setWorkspacePath(path);
+                        Toast.makeText(this, "Workspace updated", Toast.LENGTH_SHORT).show();
+                    }
+                })
                 .show();
     }
 
@@ -278,6 +334,7 @@ public class AgentActivity extends AppCompatActivity {
         binding.agentRoot.setBackgroundColor(palette.getBackgroundColor());
         binding.agentTopBar.setBackgroundColor(palette.getBackgroundColor());
         binding.btnAgentBack.setColorFilter(palette.getTextPrimaryColor());
+        binding.btnAgentTerminal.setColorFilter(palette.getPrimaryColor());
         binding.tvAgentTitle.setTextColor(palette.getTextPrimaryColor());
         binding.tvAgentSubtitle.setTextColor(palette.getTextSecondaryColor());
         binding.tvAgentToolsSummary.setTextColor(palette.getTextSecondaryColor());

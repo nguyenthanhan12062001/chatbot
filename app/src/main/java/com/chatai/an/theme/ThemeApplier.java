@@ -48,4 +48,20 @@ public final class ThemeApplier {
     public static ColorStateList singleColorStateList(int color) {
         return ColorStateList.valueOf(color);
     }
+
+    public static int estimateGradientMidColor(ThemePalette palette) {
+        if (palette == null) return 0xFFFF5F2B;
+        java.util.List<Integer> grads = palette.getGradientColors();
+        if (grads == null || grads.isEmpty()) {
+            return palette.getPrimaryColor();
+        }
+        return grads.get(grads.size() / 2);
+    }
+
+    public static int pickHighContrastTextColor(int backgroundColor) {
+        double whiteContrast = ColorUtils.calculateContrast(Color.WHITE, backgroundColor);
+        int darkText = 0xFF141218;
+        double darkContrast = ColorUtils.calculateContrast(darkText, backgroundColor);
+        return whiteContrast >= darkContrast ? Color.WHITE : darkText;
+    }
 }

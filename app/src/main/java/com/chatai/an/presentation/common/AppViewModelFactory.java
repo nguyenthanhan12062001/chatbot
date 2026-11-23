@@ -11,6 +11,7 @@ import com.chatai.an.presentation.memory.MemoryViewModel;
 import com.chatai.an.presentation.provider.ProviderSettingsViewModel;
 import com.chatai.an.presentation.search.ConversationSearchViewModel;
 import com.chatai.an.presentation.settings.SettingsViewModel;
+import com.chatai.an.presentation.terminal.TerminalViewModel;
 import com.chatai.an.presentation.themestudio.ThemeStudioViewModel;
 
 public class AppViewModelFactory implements ViewModelProvider.Factory {
@@ -89,6 +90,14 @@ public class AppViewModelFactory implements ViewModelProvider.Factory {
                     container.getWorkspaceFileManager(),
                     container.getSettingsRepository(),
                     container.getToolExecutor()
+            );
+        } else if (modelClass.isAssignableFrom(TerminalViewModel.class)) {
+            return (T) new TerminalViewModel(
+                    container.getAppTerminalManager(),
+                    container.getTermuxIntegrationManager(),
+                    container.getSettingsRepository(),
+                    container.getThemeRepository(),
+                    container.getExecutors()
             );
         }
         throw new IllegalArgumentException("Unknown ViewModel class: " + modelClass.getName());

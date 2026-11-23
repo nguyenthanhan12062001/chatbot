@@ -7,7 +7,9 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.View;
@@ -50,6 +52,7 @@ import com.chatai.an.domain.model.ThemePalette;
 import com.chatai.an.domain.model.ThinkingState;
 import com.chatai.an.presentation.agent.AgentActivity;
 import com.chatai.an.presentation.attachment.AttachmentPickerBottomSheet;
+import com.chatai.an.presentation.bubble.ChatBubbleService;
 import com.chatai.an.presentation.chat.MainChatViewModel;
 import com.chatai.an.presentation.chat.MessageAdapter;
 import com.chatai.an.presentation.chat.PendingAttachmentAdapter;
@@ -60,8 +63,10 @@ import com.chatai.an.presentation.memory.MemoryManagementActivity;
 import com.chatai.an.presentation.model.ModelSelectorBottomSheet;
 import com.chatai.an.presentation.provider.ProviderSettingsActivity;
 import com.chatai.an.presentation.search.ConversationSearchActivity;
+import com.chatai.an.presentation.settings.IntegrationsHubActivity;
 import com.chatai.an.presentation.settings.SettingsActivity;
 import com.chatai.an.presentation.sidebar.SidebarHistoryAdapter;
+import com.chatai.an.presentation.terminal.TerminalActivity;
 import com.chatai.an.theme.GradientDrawableFactory;
 import com.chatai.an.theme.ThemeApplier;
 import com.chatai.an.theme.ThemeManager;
@@ -76,6 +81,7 @@ import java.util.List;
 public class MainActivity extends AppCompatActivity {
 
     private static final String TAG = "MainActivity";
+    public static final String EXTRA_OPEN_CONVERSATION_ID = "extra_open_conversation_id";
 
     private ActivityMainBinding binding;
     private MainChatViewModel viewModel;
@@ -94,6 +100,25 @@ public class MainActivity extends AppCompatActivity {
     private androidx.appcompat.app.AlertDialog activeToolConfirmDialog;
 
     private File pendingCameraFile;
+    private boolean pendingStartBubbleAfterOverlayPerm = false;
+
+    private final ActivityResultLauncher<Intent> overlayPermissionLauncher =
+            registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
+                if (pendingStartBubbleAfterOverlayPerm) {
+                    pendingStartBubbleAfterOverlayPerm = false;
+                    if (ChatBubbleService.canDrawOverlays(this)) {
+                        launchChatBubble();
+                    }
+                }
+                updateBubbleButtonTint();
+            });
+
+    private final ActivityResultLauncher<String> notificationPermissionLauncher =
+            registerForActivityResult(new ActivityResultContracts.RequestPermission(), granted -> {
+                if (ChatBubbleService.canDrawOverlays(this)) {
+                    startBubbleServiceNow();
+                }
+            });
 
     private final ActivityResultLauncher<Intent> searchLauncher =
             registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
@@ -158,6 +183,7 @@ public class MainActivity extends AppCompatActivity {
         setupRecyclerViews();
         setupInteractions();
         observeState();
+        handleIntentConversation(getIntent());
 
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
             @Override
@@ -170,6 +196,27 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         });
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        handleIntentConversation(intent);
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        updateBubbleButtonTint();
+    }
+
+    private void handleIntentConversation(Intent intent) {
+        if (intent == null) return;
+        String convId = intent.getStringExtra(EXTRA_OPEN_CONVERSATION_ID);
+        if (convId != null && !convId.isEmpty() && viewModel != null) {
+            viewModel.openConversation(convId);
+        }
     }
 
     private void setupInsets() {
@@ -261,6 +308,7 @@ public class MainActivity extends AppCompatActivity {
         binding.btnMenu.setOnClickListener(v -> binding.drawerLayout.openDrawer(GravityCompat.START));
         binding.btnCloseSidebar.setOnClickListener(v -> binding.drawerLayout.closeDrawer(GravityCompat.START));
 
+        binding.btnChatBubble.setOnClickListener(v -> toggleChatBubble());
         binding.btnTopNewChat.setOnClickListener(v -> viewModel.startNewChat());
         binding.btnSidebarNewChat.setOnClickListener(v -> {
             viewModel.startNewChat();
@@ -285,6 +333,16 @@ public class MainActivity extends AppCompatActivity {
         binding.btnSidebarProviders.setOnClickListener(v -> {
             binding.drawerLayout.closeDrawer(GravityCompat.START);
             startActivity(new Intent(this, ProviderSettingsActivity.class));
+        });
+
+        binding.btnSidebarTerminal.setOnClickListener(v -> {
+            binding.drawerLayout.closeDrawer(GravityCompat.START);
+            startActivity(new Intent(this, TerminalActivity.class));
+        });
+
+        binding.btnSidebarHub.setOnClickListener(v -> {
+            binding.drawerLayout.closeDrawer(GravityCompat.START);
+            startActivity(new Intent(this, IntegrationsHubActivity.class));
         });
 
         binding.btnSidebarSettings.setOnClickListener(v -> {
@@ -384,7 +442,15 @@ public class MainActivity extends AppCompatActivity {
     private void observeState() {
         viewModel.getActiveTheme().observe(this, this::applyThemeConfig);
 
-        viewModel.getSettings().observe(this, settings -> currentSettings = settings);
+        viewModel.getSettings().observe(this, settings -> {
+            currentSettings = settings;
+            if (settings != null && settings.isBubbleEnabled()
+                    && ChatBubbleService.canDrawOverlays(this)
+                    && !ChatBubbleService.isRunning()) {
+                ChatBubbleService.start(this, viewModel.getActiveConversationId().getValue(), false);
+            }
+            updateBubbleButtonTint();
+        });
 
         viewModel.getSelectedModel().observe(this, model -> {
             currentModel = model;
@@ -536,6 +602,7 @@ public class MainActivity extends AppCompatActivity {
         binding.topAppBar.setBackgroundColor(activePalette.getBackgroundColor());
         binding.btnMenu.setColorFilter(activePalette.getTextPrimaryColor());
         binding.btnTopNewChat.setColorFilter(activePalette.getTextPrimaryColor());
+        updateBubbleButtonTint();
 
         // Empty State
         binding.emptySparkBadge.setBackground(
@@ -550,6 +617,11 @@ public class MainActivity extends AppCompatActivity {
                 ThemeApplier.dpToPxInt(this, 1f)
         ));
         binding.tvPhase1Badge.setTextColor(activePalette.getPrimaryColor());
+        binding.executionStatusBanner.setBackground(GradientDrawableFactory.createPill(
+                activePalette.getSurfaceVariantColor(),
+                ThemeApplier.blendWithAlpha(activePalette.getBorderColor(), 110),
+                ThemeApplier.dpToPxInt(this, 0.75f)
+        ));
         binding.tvExecutionStatus.setTextColor(activePalette.getPrimaryColor());
 
         float cardRadius = ThemeApplier.dpToPx(this, 16f);
@@ -602,7 +674,10 @@ public class MainActivity extends AppCompatActivity {
         binding.ivSidebarSearch.setColorFilter(activePalette.getPrimaryColor());
         binding.tvSidebarSearch.setTextColor(activePalette.getTextPrimaryColor());
 
-        View[] quickChips = {binding.btnSidebarAgent, binding.btnSidebarMemory, binding.btnSidebarProviders};
+        View[] quickChips = {
+                binding.btnSidebarAgent, binding.btnSidebarMemory, binding.btnSidebarProviders,
+                binding.btnSidebarTerminal, binding.btnSidebarHub
+        };
         for (View chip : quickChips) {
             chip.setBackground(GradientDrawableFactory.createSurfaceCard(
                     activePalette.getSurfaceColor(),
@@ -617,6 +692,10 @@ public class MainActivity extends AppCompatActivity {
         binding.tvSidebarMemory.setTextColor(activePalette.getTextPrimaryColor());
         binding.ivSidebarProviders.setColorFilter(activePalette.getPrimaryColor());
         binding.tvSidebarProviders.setTextColor(activePalette.getTextPrimaryColor());
+        binding.ivSidebarTerminal.setColorFilter(activePalette.getPrimaryColor());
+        binding.tvSidebarTerminal.setTextColor(activePalette.getTextPrimaryColor());
+        binding.ivSidebarHub.setColorFilter(activePalette.getSecondaryColor());
+        binding.tvSidebarHub.setTextColor(activePalette.getTextPrimaryColor());
 
         binding.tvSidebarEmptyHistory.setTextColor(activePalette.getTextSecondaryColor());
         binding.sidebarDivider.setBackgroundColor(activePalette.getBorderColor());
@@ -784,6 +863,61 @@ public class MainActivity extends AppCompatActivity {
                 binding.btnSend.setAlpha(0.55f);
             }
         }
+    }
+
+    private void toggleChatBubble() {
+        if (ChatBubbleService.isRunning()) {
+            appContainer.getSettingsRepository().setBubbleEnabled(false);
+            ChatBubbleService.stop(this);
+            updateBubbleButtonTint();
+            Toast.makeText(this, R.string.bubble_stopped_notice, Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        if (!ChatBubbleService.canDrawOverlays(this)) {
+            new MaterialAlertDialogBuilder(this)
+                    .setTitle(R.string.bubble_permission_title)
+                    .setMessage(R.string.bubble_permission_message)
+                    .setNegativeButton(R.string.action_cancel, null)
+                    .setPositiveButton(R.string.bubble_permission_grant, (d, w) -> {
+                        pendingStartBubbleAfterOverlayPerm = true;
+                        Intent intent = new Intent(
+                                Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                Uri.parse("package:" + getPackageName())
+                        );
+                        overlayPermissionLauncher.launch(intent);
+                    })
+                    .show();
+            return;
+        }
+
+        launchChatBubble();
+    }
+
+    private void launchChatBubble() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                && ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+                != PackageManager.PERMISSION_GRANTED) {
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS);
+            return;
+        }
+        startBubbleServiceNow();
+    }
+
+    private void startBubbleServiceNow() {
+        appContainer.getSettingsRepository().setBubbleEnabled(true);
+        String activeConvId = viewModel != null ? viewModel.getActiveConversationId().getValue() : null;
+        ChatBubbleService.start(this, activeConvId, false);
+        updateBubbleButtonTint();
+        Toast.makeText(this, R.string.bubble_started_notice, Toast.LENGTH_LONG).show();
+    }
+
+    private void updateBubbleButtonTint() {
+        if (binding == null || activePalette == null) return;
+        boolean active = ChatBubbleService.isRunning();
+        binding.btnChatBubble.setColorFilter(
+                active ? activePalette.getPrimaryColor() : activePalette.getTextPrimaryColor()
+        );
     }
 
     private void requestCameraAndCapture() {
