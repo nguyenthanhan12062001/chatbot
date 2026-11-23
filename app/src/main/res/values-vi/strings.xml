@@ -110,9 +110,9 @@
     <string name="settings_group_general">Chung</string>
     <string name="settings_language">Ngôn ngữ</string>
     <string name="settings_about">Giới thiệu ChatAI</string>
-    <string name="settings_about_desc">Phase 1 Foundation • Kiến trúc MVVM + Functional</string>
+    <string name="settings_about_desc">Nguyen Thanh An</string>
     <string name="settings_version">Phiên bản ứng dụng</string>
-    <string name="about_dialog_body">ChatAI là ứng dụng trò chuyện AI đa mô hình được xây dựng theo kiến trúc MVVM + Functional.\n\nPhase 1 bao gồm quản lý hội thoại cục bộ với Room, ma trận khả năng model, đính kèm &amp; xem trước tệp, đa ngôn ngữ 6 thứ tiếng và Theme Studio.</string>
+    <string name="about_dialog_body">ChatAI là ứng dụng trò chuyện AI đa mô hình được xây dựng theo kiến trúc MVVM + Functional bao gồm quản lý hội thoại cục bộ với Room, ma trận khả năng model, đính kèm &amp; xem trước tệp, đa ngôn ngữ 6 thứ tiếng và Theme Studio.</string>
 
     <string name="theme_mode_light">Sáng</string>
     <string name="theme_mode_dark">Tối</string>

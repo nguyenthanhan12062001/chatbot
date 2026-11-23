@@ -16,3 +16,12 @@
 local.properties
 .env
 debug.keystore
+# AI Studio cache
+.cg/
+# Screenshots
+Screenshot/
+# Gradle wrapper (runtime build artifacts)
+gradle/wrapper/gradle-wrapper.jar
+gradlew
+# Keystore release (kept in project for release signing)
+# release-key.jks
