@@ -1,0 +1,6 @@
+{
+  "name": "ChatAI",
+  "description": "Multi-Model AI Chat Android application foundation built with Java, XML, Material Design 3, Room, and Theme Studio.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

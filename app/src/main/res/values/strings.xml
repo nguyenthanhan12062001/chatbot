@@ -1,0 +1,343 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">ChatAI</string>
+
+    <!-- Navigation & Top Bar -->
+    <string name="cd_open_sidebar">Open navigation sidebar</string>
+    <string name="cd_close_sidebar">Close navigation sidebar</string>
+    <string name="cd_select_model">Select AI model</string>
+    <string name="cd_back">Back</string>
+
+    <!-- Sidebar -->
+    <string name="sidebar_new_chat">New Chat</string>
+    <string name="sidebar_search">Search</string>
+    <string name="sidebar_settings">Settings</string>
+    <string name="sidebar_empty_history">No conversations yet.\nStart a new chat to begin.</string>
+    <string name="sidebar_group_today">Today</string>
+    <string name="sidebar_group_yesterday">Yesterday</string>
+    <string name="sidebar_group_prev_7_days">Previous 7 Days</string>
+    <string name="sidebar_group_older">Older</string>
+    <string name="conversation_untitled">New Chat</string>
+    <string name="action_open">Open</string>
+    <string name="action_rename">Rename</string>
+    <string name="action_delete">Delete</string>
+    <string name="dialog_rename_title">Rename Conversation</string>
+    <string name="dialog_rename_hint">Conversation title</string>
+    <string name="dialog_delete_conversation_title">Delete Conversation?</string>
+    <string name="dialog_delete_conversation_message">This conversation and all its messages will be permanently deleted from this device.</string>
+    <string name="action_save">Save</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_confirm_delete">Delete</string>
+
+    <!-- Empty Chat & Prompt Suggestions -->
+    <string name="chat_greeting_title">What can I help with?</string>
+    <string name="chat_greeting_subtitle">Select a model above, attach photos or files, and compose your message below.</string>
+    <string name="chat_phase1_badge">Phase 1 Foundation • Local Chat &amp; UI Ready</string>
+    <string name="suggestion_1_title">Brainstorm architecture</string>
+    <string name="suggestion_1_prompt"># Architecture Notes\nOutline a clean MVVM + Functional module boundary for:\n- Presentation\n- Domain\n- Data</string>
+    <string name="suggestion_2_title">Draft code snippet</string>
+    <string name="suggestion_2_prompt">Review this Java helper:\n```java\npublic String greet(String name) {\n    return "Hello, " + name;\n}\n```</string>
+    <string name="suggestion_3_title">Summarize checklist</string>
+    <string name="suggestion_3_prompt">Create a launch checklist:\n1. Verify offline storage\n2. Test theme presets\n3. Check attachments</string>
+
+    <!-- Composer & Input -->
+    <string name="composer_hint">Message ChatAI…</string>
+    <string name="cd_attach">Attach photo or file</string>
+    <string name="cd_send">Send message</string>
+    <string name="cd_deep_thinking">Toggle Deep Thinking</string>
+    <string name="deep_thinking_label">Deep Thinking</string>
+    <string name="deep_thinking_unsupported_title">Deep Thinking Unsupported</string>
+    <string name="deep_thinking_unsupported_msg">The selected model (%1$s) does not support Deep Thinking mode (status: %2$s).</string>
+    <string name="deep_thinking_enabled_badge">Deep Thinking ON</string>
+    <string name="phase1_local_notice">Saved locally. Live AI inference connects in Phase 2.</string>
+
+    <!-- Message Actions & Markdown -->
+    <string name="role_user">You</string>
+    <string name="role_assistant">Assistant</string>
+    <string name="action_copy">Copy</string>
+    <string name="action_edit">Edit</string>
+    <string name="action_copy_code">Copy code</string>
+    <string name="msg_copied">Copied to clipboard</string>
+    <string name="dialog_edit_message_title">Edit Message</string>
+    <string name="dialog_delete_message_title">Delete Message?</string>
+    <string name="dialog_delete_message_body">Remove this message from the conversation?</string>
+    <string name="edited_label">Edited</string>
+
+    <!-- Model Selector & Capabilities -->
+    <string name="model_selector_title">Select Model</string>
+    <string name="model_selector_subtitle">Catalog preview • Phase 1 local configuration</string>
+    <string name="badge_free">Free</string>
+    <string name="badge_api_key">API Key</string>
+    <string name="cap_text">Text</string>
+    <string name="cap_image">Image</string>
+    <string name="cap_file">File</string>
+    <string name="cap_thinking">Deep Thinking</string>
+    <string name="cap_streaming">Streaming</string>
+    <string name="cap_status_supported">Supported</string>
+    <string name="cap_status_unsupported">Unsupported</string>
+    <string name="cap_status_unknown">Unknown</string>
+    <string name="model_capability_note_image">Device can attach images, but %1$s reports Image input as %2$s.</string>
+    <string name="model_capability_note_file">Device can attach files, but %1$s reports File input as %2$s.</string>
+
+    <!-- Attachments -->
+    <string name="attachment_sheet_title">Add Attachment</string>
+    <string name="attachment_camera">Camera</string>
+    <string name="attachment_camera_desc">Take a new photo</string>
+    <string name="attachment_photos">Photos</string>
+    <string name="attachment_photos_desc">Choose one or more photos</string>
+    <string name="attachment_files">Files</string>
+    <string name="attachment_files_desc">Pick documents via system picker</string>
+    <string name="attachment_device_vs_model_hint">Device picker capabilities are independent from the selected model\'s processing capabilities.</string>
+    <string name="cd_remove_attachment">Remove attachment</string>
+    <string name="camera_permission_denied">Camera permission is required to capture photos.</string>
+    <string name="attachment_preview_title">Attachment Preview</string>
+    <string name="attachment_file_type_label">Type: %1$s</string>
+    <string name="attachment_file_size_label">Size: %1$s</string>
+
+    <!-- Search -->
+    <string name="search_title">Search History</string>
+    <string name="search_hint">Search titles or message text…</string>
+    <string name="search_empty">No matching conversations found.</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_group_appearance">Appearance</string>
+    <string name="settings_theme_mode">Theme Mode</string>
+    <string name="settings_theme_preset">Theme Preset</string>
+    <string name="settings_theme_studio">Theme Studio</string>
+    <string name="settings_theme_studio_desc">Customize colors, linear gradients &amp; live preview</string>
+    <string name="settings_group_models">Models</string>
+    <string name="settings_active_model">Active Model</string>
+    <string name="settings_model_capabilities">Model Capabilities</string>
+    <string name="settings_group_conversations">Conversations</string>
+    <string name="settings_auto_title">Auto-title new chats</string>
+    <string name="settings_auto_title_desc">Use the first message as the conversation title</string>
+    <string name="settings_confirm_delete">Confirm before deleting</string>
+    <string name="settings_confirm_delete_desc">Ask before deleting conversations or messages</string>
+    <string name="settings_clear_history">Clear all conversations</string>
+    <string name="settings_clear_history_desc">Remove all saved chats and attachment references</string>
+    <string name="dialog_clear_history_title">Clear All History?</string>
+    <string name="dialog_clear_history_body">All conversations, messages, and attachment metadata will be deleted.</string>
+    <string name="settings_cleared_msg">All conversations cleared</string>
+    <string name="settings_group_general">General</string>
+    <string name="settings_language">Language</string>
+    <string name="settings_about">About ChatAI</string>
+    <string name="settings_about_desc">Phase 1 Foundation • MVVM + Functional Architecture</string>
+    <string name="settings_version">App Version</string>
+    <string name="about_dialog_body">ChatAI is a multi-model AI conversation app designed with a modular MVVM + Functional Architecture.\n\nPhase 1 includes local conversation management, Room persistence, model capability matrix, attachment selection &amp; preview, 6-language support, and Theme Studio.</string>
+
+    <!-- Theme Modes & Presets -->
+    <string name="theme_mode_light">Light</string>
+    <string name="theme_mode_dark">Dark</string>
+    <string name="theme_mode_system">System</string>
+    <string name="preset_sunset_orange">Sunset Orange</string>
+    <string name="preset_ocean_blue">Ocean Blue</string>
+    <string name="preset_midnight_purple">Midnight Purple</string>
+    <string name="preset_emerald">Emerald</string>
+    <string name="preset_rose_pink">Rose Pink</string>
+    <string name="preset_minimal_gray">Minimal Gray</string>
+    <string name="preset_custom">Custom</string>
+
+    <!-- Theme Studio -->
+    <string name="theme_studio_title">Theme Studio</string>
+    <string name="theme_studio_live_preview">Live Preview (Draft)</string>
+    <string name="theme_studio_editing_variant">Editing Palette</string>
+    <string name="theme_studio_presets">Theme Presets</string>
+    <string name="theme_studio_colors">Custom Colors</string>
+    <string name="theme_studio_gradient">Linear Gradient</string>
+    <string name="theme_studio_gradient_stops">Gradient Stops</string>
+    <string name="theme_studio_gradient_2_colors">2 Colors</string>
+    <string name="theme_studio_gradient_3_colors">3 Colors</string>
+    <string name="theme_studio_direction">Direction</string>
+    <string name="direction_top_bottom">Top to Bottom</string>
+    <string name="direction_left_right">Left to Right</string>
+    <string name="direction_diagonal_down">Diagonal Down</string>
+    <string name="direction_diagonal_up">Diagonal Up</string>
+    <string name="color_token_primary">Primary</string>
+    <string name="color_token_secondary">Secondary</string>
+    <string name="color_token_background">Background</string>
+    <string name="color_token_surface">Surface</string>
+    <string name="color_token_accent">Accent</string>
+    <string name="color_token_text">Text</string>
+    <string name="color_token_grad_1">Gradient 1</string>
+    <string name="color_token_grad_2">Gradient 2</string>
+    <string name="color_token_grad_3">Gradient 3</string>
+    <string name="theme_studio_apply">Apply</string>
+    <string name="theme_studio_cancel">Cancel</string>
+    <string name="theme_studio_applied_msg">Theme applied</string>
+    <string name="theme_studio_discard_title">Discard Unsaved Changes?</string>
+    <string name="theme_studio_discard_body">Your Draft Theme changes have not been applied yet. Discard them or continue editing?</string>
+    <string name="theme_studio_discard_action">Discard</string>
+    <string name="theme_studio_continue_action">Continue Editing</string>
+    <string name="color_picker_title">Pick Color</string>
+    <string name="color_picker_hex_hint">#RRGGBB</string>
+    <string name="preview_sample_user">Show me a gradient card preview!</string>
+    <string name="preview_sample_assistant">DraftTheme preview updates in real time without affecting ActiveTheme until you tap Apply.</string>
+
+    <!-- Phase 2 & 3: Multi-Provider AI Platform -->
+    <string name="chat_platform_badge">Multi-Provider AI • Free, Personal API &amp; Agent Ready</string>
+    <string name="cd_stop_generation">Stop generation</string>
+    <string name="execution_state_preparing">Preparing context…</string>
+    <string name="execution_state_connecting">Connecting…</string>
+    <string name="execution_state_thinking">Thinking…</string>
+    <string name="execution_state_streaming">Responding…</string>
+    <string name="execution_state_tool">Running tool…</string>
+    <string name="execution_state_completed">Completed</string>
+    <string name="execution_state_stopped">Stopped</string>
+    <string name="execution_state_failed">Request failed</string>
+    <string name="thinking_process_title">Thinking Process</string>
+    <string name="thinking_process_toggle_show">Show reasoning</string>
+    <string name="thinking_process_toggle_hide">Hide reasoning</string>
+    <string name="filter_all">All</string>
+    <string name="filter_free">Free Cloud</string>
+    <string name="filter_personal_api">Personal API</string>
+    <string name="filter_local">Local AI</string>
+    <string name="badge_local">Local</string>
+    <string name="badge_zero_price">$0 Free</string>
+    <string name="badge_inactive">Inactive</string>
+    <string name="cap_tools">Tools</string>
+    <string name="cap_structured">JSON</string>
+    <string name="refresh_catalogs">Sync Catalogs</string>
+    <string name="local_runtime_inactive_short">Inactive</string>
+    <string name="local_runtime_inactive_banner">Status: Inactive — No on-device inference runtime connected yet.</string>
+    <string name="usability_needs_key">$0 pricing • Free OpenRouter API key required in Providers</string>
+    <string name="usability_rate_limited">Rate limited — Wait briefly or try another provider</string>
+    <string name="usability_quota_exceeded">Quota exceeded for this free endpoint</string>
+    <string name="usability_no_local_runtime">Inactive • Connect Ollama/LM Studio under Personal API or bundle a local runtime</string>
+    <string name="usability_unavailable">Model currently unavailable</string>
+
+    <!-- Project Scope in Chat -->
+    <string name="project_tag_none">Global</string>
+    <string name="project_tag_active">Project: %1$s</string>
+    <string name="project_dialog_title">Conversation Project Scope</string>
+    <string name="project_dialog_message">Assign a project tag (e.g. mobile-app) to isolate Project Memories while keeping Global Memories accessible.</string>
+    <string name="project_clear">Use Global Only</string>
+
+    <!-- Settings & Sidebar AI Platform Links -->
+    <string name="sidebar_agent">AI Agent</string>
+    <string name="sidebar_memory">AI Memory</string>
+    <string name="sidebar_providers">Providers &amp; Keys</string>
+    <string name="settings_group_ai_platform">AI Platform</string>
+    <string name="settings_providers_title">Providers &amp; API Keys</string>
+    <string name="settings_providers_desc">Free AI status, encrypted API key pools, custom endpoints &amp; local models</string>
+    <string name="settings_memory_title">AI Memory</string>
+    <string name="settings_memory_desc">Manage preferences, project memory, merge &amp; retrieval context</string>
+    <string name="settings_agent_title">AI Agent Workspace</string>
+    <string name="settings_agent_desc">Run multi-step goal tasks with safe modular tools</string>
+
+    <!-- Provider Settings -->
+    <string name="provider_settings_title">Providers &amp; AI Sources</string>
+    <string name="provider_section_free">Free Cloud AI</string>
+    <string name="provider_section_personal">Personal API Providers</string>
+    <string name="provider_section_local">Local On-Device AI</string>
+    <string name="provider_base_url">Base URL</string>
+    <string name="provider_fallback_model">Fallback Model ID (Optional)</string>
+    <string name="provider_key_rotation">Automatic API Key Rotation</string>
+    <string name="provider_enabled">Enable Provider</string>
+    <string name="provider_test_connection">Test Connection &amp; Fetch Models</string>
+    <string name="provider_save_config">Save Provider Config</string>
+    <string name="provider_add_key">Add API Key</string>
+    <string name="provider_key_label_hint">Key Label (e.g. Work, Backup)</string>
+    <string name="provider_key_value_hint">Paste API key (encrypted via AndroidKeyStore)</string>
+    <string name="provider_no_keys">No API keys added for this provider yet.</string>
+    <string name="local_import_model">Import Local Model (.gguf / .tflite)</string>
+    <string name="local_no_models">No local model files imported. You can also connect Ollama or LM Studio via Personal API.</string>
+
+    <!-- Memory Management -->
+    <string name="memory_title">AI Memory</string>
+    <string name="memory_subtitle">Relevant, pinned, and project-scoped memories are selected dynamically without altering chat history.</string>
+    <string name="memory_add">Add Memory</string>
+    <string name="memory_content_hint">What should ChatAI remember? (e.g. Prefer concise Java examples)</string>
+    <string name="memory_project_hint">Project ID (optional for PROJECT scope)</string>
+    <string name="memory_search_hint">Search memories by content, category, or project…</string>
+    <string name="memory_empty">No matching AI memories found.\nTap + to add preferences, decisions, or project notes.</string>
+    <string name="memory_merge_btn">Merge</string>
+    <string name="memory_filter_global">Global</string>
+    <string name="memory_filter_project">Project</string>
+    <string name="memory_filter_pinned">Pinned</string>
+    <string name="memory_filter_archived">Archived</string>
+    <string name="memory_pin_label">Pin memory (high priority)</string>
+    <string name="memory_action_pin">Pin</string>
+    <string name="memory_action_unpin">Unpin</string>
+    <string name="memory_action_details">Details</string>
+    <string name="memory_action_restore">Restore</string>
+    <string name="memory_details_title">Memory Details</string>
+    <string name="memory_restore_originals">Restore Originals</string>
+    <string name="memory_merge_none">No closely related memories found to merge right now.</string>
+    <string name="memory_merge_pick_cluster">Select Memory Cluster to Merge</string>
+    <string name="memory_merge_preview_title">Review Consolidated Memory</string>
+    <string name="memory_merge_confirm">Merge Safely</string>
+
+    <!-- Agent Workspace -->
+    <string name="agent_title">AI Agent</string>
+    <string name="agent_subtitle">Plans steps, invokes safe tools with your confirmation, and synthesizes results.</string>
+    <string name="agent_goal_hint">Describe a goal (e.g. Calculate compound interest or inspect device specs)…</string>
+    <string name="agent_run">Run Task</string>
+    <string name="agent_stop">Stop</string>
+    <string name="agent_tools_available">Available Tools</string>
+    <string name="agent_confirm_tool_title">Allow Tool Execution?</string>
+    <string name="agent_confirm_allow">Allow</string>
+    <string name="agent_confirm_deny">Deny</string>
+
+    <!-- AI Agent & Tool Platform -->
+    <string name="mode_chat_short">Chat Agent</string>
+    <string name="mode_coding_short">Coding Agent</string>
+    <string name="cd_toggle_agent_mode">Toggle Chat Agent or Coding Agent mode</string>
+    <string name="tool_confirm_title">Confirm Tool Action</string>
+    <string name="tool_confirm_allow">Allow</string>
+    <string name="tool_confirm_deny">Deny</string>
+    <string name="agent_workspace_label">Workspace: %1$s</string>
+    <string name="agent_workspace_change">Change Workspace</string>
+    <string name="agent_workspace_hint">Workspace directory path (leave empty for default)</string>
+    <string name="agent_workspace_reset">Use Default</string>
+
+    <!-- Upgraded Flagship Settings Control Center -->
+    <string name="settings_hero_title">ChatAI Control Center</string>
+    <string name="settings_hero_subtitle">Multi-Provider AI, Tools, Termux, Shizuku &amp; Permissions</string>
+    <string name="settings_hero_open_hub">Open Control Hub</string>
+    <string name="settings_hero_refresh">Sync Status</string>
+    <string name="settings_search_hint">Search settings, tools, Termux, Shizuku, theme…</string>
+    <string name="settings_group_subsystems">System Integrations &amp; Live Status</string>
+    <string name="settings_subsystems_open_hint">Tap any subsystem to test, grant permissions, or configure</string>
+    <string name="settings_group_agent_tools">Agent, Tools &amp; Safety</string>
+    <string name="settings_default_agent_mode">Default Agent Mode</string>
+    <string name="settings_chat_tools">Enable Tools in Chat</string>
+    <string name="settings_chat_tools_desc">Allow Chat Agent &amp; Coding Agent to invoke enabled tools automatically</string>
+    <string name="settings_confirm_mutating">Confirm Mutating File Ops</string>
+    <string name="settings_confirm_mutating_desc">Require approval before overwriting, editing, or deleting files</string>
+    <string name="settings_confirm_shell">Confirm Shell, ADB &amp; Downloads</string>
+    <string name="settings_confirm_shell_desc">Require approval before Termux, Shizuku/ADB, POST, or download calls</string>
+    <string name="settings_search_engine">Preferred Search Engine</string>
+    <string name="settings_agent_steps_timeout">Agent Steps &amp; Tool Timeout</string>
+    <string name="settings_workspace_summary">Active Workspace &amp; File Access</string>
+    <string name="settings_manage_tools_hub">System Hub: Termux, Shizuku, ADB, Files &amp; Downloads</string>
+    <string name="settings_manage_tools_hub_desc">Test connections, bind UserService, grant SAF folders &amp; toggle tools</string>
+
+    <!-- Integrations & Tool Hub -->
+    <string name="hub_title">Control Hub &amp; Tools</string>
+    <string name="hub_tab_all">All</string>
+    <string name="hub_tab_shell">Termux &amp; Shizuku</string>
+    <string name="hub_tab_files">ADB &amp; Files</string>
+    <string name="hub_tab_net">Internet &amp; Downloads</string>
+    <string name="hub_tab_tools">Tool Matrix</string>
+    <string name="hub_termux_title">Termux Execution</string>
+    <string name="hub_termux_test">Test Termux</string>
+    <string name="hub_termux_perm">Request Permission</string>
+    <string name="hub_termux_setup_title">Termux ~/.termux/termux.properties</string>
+    <string name="hub_termux_copy_props">Copy Properties</string>
+    <string name="hub_shizuku_title">Shizuku &amp; ADB Tools</string>
+    <string name="hub_shizuku_perm">Request Shizuku</string>
+    <string name="hub_shizuku_bind">Bind UserService</string>
+    <string name="hub_shizuku_test">Run ADB Probe</string>
+    <string name="hub_shizuku_fallback">Allow Shizuku File Fallback</string>
+    <string name="hub_files_title">File Access &amp; SAF Folders</string>
+    <string name="hub_files_grant_saf">Grant SAF Folder</string>
+    <string name="hub_files_set_workspace">Edit Workspace Path</string>
+    <string name="hub_internet_title">Internet &amp; Search</string>
+    <string name="hub_internet_probe">Test HTTPS Probe</string>
+    <string name="hub_downloads_title">Download Management</string>
+    <string name="hub_downloads_test">Test Download URL</string>
+    <string name="hub_permissions_title">Permission Management</string>
+    <string name="hub_tools_title">Shared Tool Matrix</string>
+</resources>
+

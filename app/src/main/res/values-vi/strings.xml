@@ -1,0 +1,327 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">ChatAI</string>
+
+    <string name="cd_open_sidebar">Mở thanh bên điều hướng</string>
+    <string name="cd_close_sidebar">Đóng thanh bên điều hướng</string>
+    <string name="cd_select_model">Chọn mô hình AI</string>
+    <string name="cd_back">Quay lại</string>
+
+    <string name="sidebar_new_chat">Cuộc trò chuyện mới</string>
+    <string name="sidebar_search">Tìm kiếm</string>
+    <string name="sidebar_settings">Cài đặt</string>
+    <string name="sidebar_empty_history">Chưa có cuộc hội thoại nào.\nHãy bắt đầu trò chuyện mới.</string>
+    <string name="sidebar_group_today">Hôm nay</string>
+    <string name="sidebar_group_yesterday">Hôm qua</string>
+    <string name="sidebar_group_prev_7_days">7 ngày trước</string>
+    <string name="sidebar_group_older">Cũ hơn</string>
+    <string name="conversation_untitled">Cuộc trò chuyện mới</string>
+    <string name="action_open">Mở</string>
+    <string name="action_rename">Đổi tên</string>
+    <string name="action_delete">Xóa</string>
+    <string name="dialog_rename_title">Đổi tên hội thoại</string>
+    <string name="dialog_rename_hint">Tiêu đề hội thoại</string>
+    <string name="dialog_delete_conversation_title">Xóa hội thoại?</string>
+    <string name="dialog_delete_conversation_message">Hội thoại này và toàn bộ tin nhắn sẽ bị xóa vĩnh viễn khỏi thiết bị.</string>
+    <string name="action_save">Lưu</string>
+    <string name="action_cancel">Hủy</string>
+    <string name="action_confirm_delete">Xóa</string>
+
+    <string name="chat_greeting_title">Tôi có thể giúp gì cho bạn?</string>
+    <string name="chat_greeting_subtitle">Chọn model ở trên, đính kèm ảnh hoặc tệp và nhập nội dung bên dưới.</string>
+    <string name="chat_phase1_badge">Phase 1 Foundation • Sẵn sàng giao diện &amp; lưu trữ cục bộ</string>
+    <string name="suggestion_1_title">Phác thảo kiến trúc</string>
+    <string name="suggestion_2_title">Soạn đoạn mã mẫu</string>
+    <string name="suggestion_3_title">Tổng hợp danh sách</string>
+
+    <string name="composer_hint">Nhắn tin cho ChatAI…</string>
+    <string name="cd_attach">Đính kèm ảnh hoặc tệp</string>
+    <string name="cd_send">Gửi tin nhắn</string>
+    <string name="cd_deep_thinking">Bật/tắt Deep Thinking</string>
+    <string name="deep_thinking_label">Deep Thinking</string>
+    <string name="deep_thinking_unsupported_title">Không hỗ trợ Deep Thinking</string>
+    <string name="deep_thinking_unsupported_msg">Model đang chọn (%1$s) không hỗ trợ chế độ Deep Thinking (trạng thái: %2$s).</string>
+    <string name="deep_thinking_enabled_badge">Deep Thinking BẬT</string>
+    <string name="phase1_local_notice">Đã lưu cục bộ. Kết nối AI trực tiếp sẽ có ở Phase 2.</string>
+
+    <string name="role_user">Bạn</string>
+    <string name="role_assistant">Trợ lý</string>
+    <string name="action_copy">Sao chép</string>
+    <string name="action_edit">Chỉnh sửa</string>
+    <string name="action_copy_code">Sao chép mã</string>
+    <string name="msg_copied">Đã sao chép vào bộ nhớ tạm</string>
+    <string name="dialog_edit_message_title">Chỉnh sửa tin nhắn</string>
+    <string name="dialog_delete_message_title">Xóa tin nhắn?</string>
+    <string name="dialog_delete_message_body">Xóa tin nhắn này khỏi cuộc hội thoại?</string>
+    <string name="edited_label">Đã sửa</string>
+
+    <string name="model_selector_title">Chọn Model</string>
+    <string name="model_selector_subtitle">Danh mục mẫu • Cấu hình cục bộ Phase 1</string>
+    <string name="badge_free">Miễn phí</string>
+    <string name="badge_api_key">API Key</string>
+    <string name="cap_text">Văn bản</string>
+    <string name="cap_image">Hình ảnh</string>
+    <string name="cap_file">Tệp</string>
+    <string name="cap_thinking">Deep Thinking</string>
+    <string name="cap_streaming">Streaming</string>
+    <string name="cap_status_supported">Hỗ trợ</string>
+    <string name="cap_status_unsupported">Không hỗ trợ</string>
+    <string name="cap_status_unknown">Chưa rõ</string>
+    <string name="model_capability_note_image">Thiết bị có thể đính kèm ảnh, nhưng %1$s có trạng thái Hình ảnh là %2$s.</string>
+    <string name="model_capability_note_file">Thiết bị có thể đính kèm tệp, nhưng %1$s có trạng thái Tệp là %2$s.</string>
+
+    <string name="attachment_sheet_title">Thêm tệp đính kèm</string>
+    <string name="attachment_camera">Máy ảnh</string>
+    <string name="attachment_camera_desc">Chụp ảnh mới</string>
+    <string name="attachment_photos">Ảnh</string>
+    <string name="attachment_photos_desc">Chọn một hoặc nhiều ảnh</string>
+    <string name="attachment_files">Tệp</string>
+    <string name="attachment_files_desc">Chọn tài liệu qua trình chọn hệ thống</string>
+    <string name="attachment_device_vs_model_hint">Khả năng chọn tệp của thiết bị độc lập với khả năng xử lý nội dung của model.</string>
+    <string name="cd_remove_attachment">Xóa tệp đính kèm</string>
+    <string name="camera_permission_denied">Cần quyền Máy ảnh để chụp hình.</string>
+    <string name="attachment_preview_title">Xem trước tệp đính kèm</string>
+    <string name="attachment_file_type_label">Loại: %1$s</string>
+    <string name="attachment_file_size_label">Kích thước: %1$s</string>
+
+    <string name="search_title">Tìm kiếm lịch sử</string>
+    <string name="search_hint">Tìm theo tiêu đề hoặc nội dung tin nhắn…</string>
+    <string name="search_empty">Không tìm thấy cuộc hội thoại phù hợp.</string>
+
+    <string name="settings_title">Cài đặt</string>
+    <string name="settings_group_appearance">Giao diện</string>
+    <string name="settings_theme_mode">Chế độ giao diện</string>
+    <string name="settings_theme_preset">Theme Preset</string>
+    <string name="settings_theme_studio">Theme Studio</string>
+    <string name="settings_theme_studio_desc">Tùy chỉnh màu sắc, linear gradient &amp; xem trước trực tiếp</string>
+    <string name="settings_group_models">Mô hình AI</string>
+    <string name="settings_active_model">Model đang chọn</string>
+    <string name="settings_model_capabilities">Khả năng của model</string>
+    <string name="settings_group_conversations">Hội thoại</string>
+    <string name="settings_auto_title">Tự đặt tiêu đề</string>
+    <string name="settings_auto_title_desc">Dùng tin nhắn đầu tiên làm tiêu đề hội thoại</string>
+    <string name="settings_confirm_delete">Xác nhận trước khi xóa</string>
+    <string name="settings_confirm_delete_desc">Hỏi xác nhận trước khi xóa hội thoại hoặc tin nhắn</string>
+    <string name="settings_clear_history">Xóa toàn bộ hội thoại</string>
+    <string name="settings_clear_history_desc">Xóa tất cả cuộc trò chuyện và tham chiếu tệp đã lưu</string>
+    <string name="dialog_clear_history_title">Xóa toàn bộ lịch sử?</string>
+    <string name="dialog_clear_history_body">Tất cả hội thoại, tin nhắn và thông tin tệp đính kèm sẽ bị xóa.</string>
+    <string name="settings_cleared_msg">Đã xóa toàn bộ hội thoại</string>
+    <string name="settings_group_general">Chung</string>
+    <string name="settings_language">Ngôn ngữ</string>
+    <string name="settings_about">Giới thiệu ChatAI</string>
+    <string name="settings_about_desc">Phase 1 Foundation • Kiến trúc MVVM + Functional</string>
+    <string name="settings_version">Phiên bản ứng dụng</string>
+    <string name="about_dialog_body">ChatAI là ứng dụng trò chuyện AI đa mô hình được xây dựng theo kiến trúc MVVM + Functional.\n\nPhase 1 bao gồm quản lý hội thoại cục bộ với Room, ma trận khả năng model, đính kèm &amp; xem trước tệp, đa ngôn ngữ 6 thứ tiếng và Theme Studio.</string>
+
+    <string name="theme_mode_light">Sáng</string>
+    <string name="theme_mode_dark">Tối</string>
+    <string name="theme_mode_system">Theo thiết bị</string>
+    <string name="preset_sunset_orange">Sunset Orange</string>
+    <string name="preset_ocean_blue">Ocean Blue</string>
+    <string name="preset_midnight_purple">Midnight Purple</string>
+    <string name="preset_emerald">Emerald</string>
+    <string name="preset_rose_pink">Rose Pink</string>
+    <string name="preset_minimal_gray">Minimal Gray</string>
+    <string name="preset_custom">Tùy chỉnh</string>
+
+    <string name="theme_studio_title">Theme Studio</string>
+    <string name="theme_studio_live_preview">Xem trước trực tiếp (Bản nháp)</string>
+    <string name="theme_studio_editing_variant">Đang chỉnh bảng màu</string>
+    <string name="theme_studio_presets">Theme Presets</string>
+    <string name="theme_studio_colors">Tùy chỉnh màu sắc</string>
+    <string name="theme_studio_gradient">Linear Gradient</string>
+    <string name="theme_studio_gradient_stops">Số điểm màu Gradient</string>
+    <string name="theme_studio_gradient_2_colors">2 màu</string>
+    <string name="theme_studio_gradient_3_colors">3 màu</string>
+    <string name="theme_studio_direction">Hướng Gradient</string>
+    <string name="direction_top_bottom">Trên xuống dưới</string>
+    <string name="direction_left_right">Trái sang phải</string>
+    <string name="direction_diagonal_down">Chéo xuống</string>
+    <string name="direction_diagonal_up">Chéo lên</string>
+    <string name="color_token_primary">Màu chính</string>
+    <string name="color_token_secondary">Màu phụ</string>
+    <string name="color_token_background">Nền</string>
+    <string name="color_token_surface">Bề mặt</string>
+    <string name="color_token_accent">Nhấn</string>
+    <string name="color_token_text">Chữ</string>
+    <string name="color_token_grad_1">Gradient 1</string>
+    <string name="color_token_grad_2">Gradient 2</string>
+    <string name="color_token_grad_3">Gradient 3</string>
+    <string name="theme_studio_apply">Áp dụng</string>
+    <string name="theme_studio_cancel">Hủy</string>
+    <string name="theme_studio_applied_msg">Đã áp dụng theme</string>
+    <string name="theme_studio_discard_title">Loại bỏ thay đổi chưa lưu?</string>
+    <string name="theme_studio_discard_body">Thay đổi trên DraftTheme chưa được áp dụng. Bạn muốn loại bỏ hay tiếp tục chỉnh sửa?</string>
+    <string name="theme_studio_discard_action">Loại bỏ</string>
+    <string name="theme_studio_continue_action">Tiếp tục</string>
+    <string name="color_picker_title">Chọn màu</string>
+    <string name="preview_sample_user">Xem thử thẻ gradient ngay!</string>
+    <string name="preview_sample_assistant">DraftTheme cập nhật tức thì mà không ảnh hưởng ActiveTheme cho đến khi bạn nhấn Áp dụng.</string>
+
+    <!-- Phase 2 & 3: Multi-Provider AI Platform -->
+    <string name="chat_platform_badge">AI Đa Mô Hình • Miễn phí, API Cá Nhân &amp; Agent</string>
+    <string name="cd_stop_generation">Dừng tạo phản hồi</string>
+    <string name="execution_state_preparing">Đang chuẩn bị ngữ cảnh…</string>
+    <string name="execution_state_connecting">Đang kết nối...</string>
+    <string name="execution_state_thinking">Đang suy nghĩ...</string>
+    <string name="execution_state_streaming">Đang trả lời...</string>
+    <string name="execution_state_tool">Đang thực hiện tác vụ...</string>
+    <string name="execution_state_completed">Hoàn tất</string>
+    <string name="execution_state_stopped">Đã dừng</string>
+    <string name="execution_state_failed">Yêu cầu thất bại</string>
+    <string name="thinking_process_title">Quá trình suy nghĩ</string>
+    <string name="thinking_process_toggle_show">Hiện suy luận</string>
+    <string name="thinking_process_toggle_hide">Ẩn suy luận</string>
+    <string name="filter_all">Tất cả</string>
+    <string name="filter_free">Miễn phí</string>
+    <string name="filter_personal_api">API Cá Nhân</string>
+    <string name="filter_local">AI Cục Bộ</string>
+    <string name="badge_local">Cục bộ</string>
+    <string name="badge_zero_price">Giá $0</string>
+    <string name="badge_inactive">Chưa hoạt động</string>
+    <string name="cap_tools">Công cụ</string>
+    <string name="cap_structured">JSON</string>
+    <string name="refresh_catalogs">Đồng bộ danh mục</string>
+    <string name="local_runtime_inactive_short">Chưa kết nối</string>
+    <string name="local_runtime_inactive_banner">Trạng thái: Chưa hoạt động — Chưa có runtime AI cục bộ kết nối trên thiết bị.</string>
+    <string name="usability_needs_key">Giá $0 • Cần thêm API key OpenRouter miễn phí trong phần Nhà cung cấp</string>
+    <string name="usability_rate_limited">Đang giới hạn tần suất — Hãy đợi hoặc chọn nguồn khác</string>
+    <string name="usability_quota_exceeded">Đã hết hạn mức sử dụng cho nguồn miễn phí này</string>
+    <string name="usability_no_local_runtime">Chưa hoạt động • Hãy kết nối Ollama/LM Studio trong API Cá Nhân</string>
+    <string name="usability_unavailable">Model hiện không khả dụng</string>
+
+    <!-- Project Scope in Chat -->
+    <string name="project_tag_none">Toàn cục</string>
+    <string name="project_tag_active">Dự án: %1$s</string>
+    <string name="project_dialog_title">Phạm vi dự án của hội thoại</string>
+    <string name="project_dialog_message">Gắn tên dự án (vd: mobile-app) để tách biệt bộ nhớ theo dự án trong khi vẫn giữ bộ nhớ Toàn cục.</string>
+    <string name="project_clear">Chỉ dùng Toàn cục</string>
+
+    <!-- Settings & Sidebar AI Platform Links -->
+    <string name="sidebar_agent">AI Agent</string>
+    <string name="sidebar_memory">Bộ nhớ AI</string>
+    <string name="sidebar_providers">Nhà cung cấp &amp; Key</string>
+    <string name="settings_group_ai_platform">Nền tảng AI</string>
+    <string name="settings_providers_title">Nhà cung cấp &amp; API Key</string>
+    <string name="settings_providers_desc">Trạng thái AI miễn phí, kho API key mã hóa, endpoint tùy chỉnh &amp; model cục bộ</string>
+    <string name="settings_memory_title">Bộ nhớ AI</string>
+    <string name="settings_memory_desc">Quản lý sở thích, bộ nhớ dự án, gộp và khôi phục ngữ cảnh</string>
+    <string name="settings_agent_title">Không gian AI Agent</string>
+    <string name="settings_agent_desc">Thực hiện tác vụ nhiều bước với các công cụ an toàn</string>
+
+    <!-- Provider Settings -->
+    <string name="provider_settings_title">Nhà cung cấp &amp; Nguồn AI</string>
+    <string name="provider_section_free">AI Đám Mây Miễn Phí</string>
+    <string name="provider_section_personal">Nhà Cung Cấp API Cá Nhân</string>
+    <string name="provider_section_local">AI Cục Bộ Trên Thiết Bị</string>
+    <string name="provider_base_url">Base URL</string>
+    <string name="provider_fallback_model">Model dự phòng (Tùy chọn)</string>
+    <string name="provider_key_rotation">Tự động xoay vòng API Key</string>
+    <string name="provider_enabled">Bật nhà cung cấp</string>
+    <string name="provider_test_connection">Kiểm tra kết nối &amp; Tải danh sách model</string>
+    <string name="provider_save_config">Lưu cấu hình</string>
+    <string name="provider_add_key">Thêm API Key</string>
+    <string name="provider_key_label_hint">Nhãn key (vd: Công việc, Dự phòng)</string>
+    <string name="provider_key_value_hint">Dán API key (mã hóa bằng AndroidKeyStore)</string>
+    <string name="provider_no_keys">Chưa có API key nào cho nhà cung cấp này.</string>
+    <string name="local_import_model">Nhập model cục bộ (.gguf / .tflite)</string>
+    <string name="local_no_models">Chưa nhập tệp model cục bộ. Bạn cũng có thể kết nối Ollama hoặc LM Studio qua API Cá Nhân.</string>
+
+    <!-- Memory Management -->
+    <string name="memory_title">Bộ nhớ AI</string>
+    <string name="memory_subtitle">Bộ nhớ liên quan, đã ghim và theo dự án được chọn lọc tự động mà không sửa lịch sử chat.</string>
+    <string name="memory_add">Thêm bộ nhớ</string>
+    <string name="memory_content_hint">ChatAI nên ghi nhớ điều gì? (vd: Ưu tiên ví dụ Java ngắn gọn)</string>
+    <string name="memory_project_hint">Mã/tên dự án (tùy chọn cho phạm vi PROJECT)</string>
+    <string name="memory_search_hint">Tìm bộ nhớ theo nội dung, phân loại hoặc dự án…</string>
+    <string name="memory_empty">Không có bộ nhớ phù hợp.\nNhấn + để thêm sở thích, quyết định hoặc ghi chú dự án.</string>
+    <string name="memory_merge_btn">Gộp</string>
+    <string name="memory_filter_global">Toàn cục</string>
+    <string name="memory_filter_project">Dự án</string>
+    <string name="memory_filter_pinned">Đã ghim</string>
+    <string name="memory_filter_archived">Lưu trữ</string>
+    <string name="memory_pin_label">Ghim bộ nhớ (ưu tiên cao)</string>
+    <string name="memory_action_pin">Ghim</string>
+    <string name="memory_action_unpin">Bỏ ghim</string>
+    <string name="memory_action_details">Chi tiết</string>
+    <string name="memory_action_restore">Khôi phục</string>
+    <string name="memory_details_title">Chi tiết bộ nhớ</string>
+    <string name="memory_restore_originals">Khôi phục bản gốc</string>
+    <string name="memory_merge_none">Hiện chưa có nhóm bộ nhớ tương đồng nào để gộp.</string>
+    <string name="memory_merge_pick_cluster">Chọn nhóm bộ nhớ để gộp</string>
+    <string name="memory_merge_preview_title">Xem trước bộ nhớ đã gộp</string>
+    <string name="memory_merge_confirm">Gộp an toàn</string>
+
+    <!-- Agent Workspace -->
+    <string name="agent_title">AI Agent</string>
+    <string name="agent_subtitle">Lập kế hoạch từng bước, gọi công cụ an toàn khi bạn xác nhận và tổng hợp kết quả.</string>
+    <string name="agent_goal_hint">Mô tả mục tiêu (vd: Tính lãi kép hoặc kiểm tra cấu hình thiết bị)…</string>
+    <string name="agent_run">Chạy tác vụ</string>
+    <string name="agent_stop">Dừng</string>
+    <string name="agent_tools_available">Công cụ khả dụng</string>
+    <string name="agent_confirm_tool_title">Cho phép chạy công cụ?</string>
+    <string name="agent_confirm_allow">Cho phép</string>
+    <string name="agent_confirm_deny">Từ chối</string>
+
+    <!-- AI Agent & Tool Platform -->
+    <string name="mode_chat_short">Chat Agent</string>
+    <string name="mode_coding_short">Coding Agent</string>
+    <string name="cd_toggle_agent_mode">Chuyển chế độ Chat Agent hoặc Coding Agent</string>
+    <string name="tool_confirm_title">Xác nhận chạy công cụ</string>
+    <string name="tool_confirm_allow">Cho phép</string>
+    <string name="tool_confirm_deny">Từ chối</string>
+    <string name="agent_workspace_label">Workspace: %1$s</string>
+    <string name="agent_workspace_change">Đổi Workspace</string>
+    <string name="agent_workspace_hint">Đường dẫn thư mục dự án (để trống dùng mặc định)</string>
+    <string name="agent_workspace_reset">Dùng mặc định</string>
+
+    <!-- Upgraded Flagship Settings Control Center -->
+    <string name="settings_hero_title">Trung Tâm Điều Khiển ChatAI</string>
+    <string name="settings_hero_subtitle">AI Đa Mô Hình, Công Cụ, Termux, Shizuku &amp; Quyền</string>
+    <string name="settings_hero_open_hub">Mở Control Hub</string>
+    <string name="settings_hero_refresh">Đồng bộ trạng thái</string>
+    <string name="settings_search_hint">Tìm cài đặt, công cụ, Termux, Shizuku, giao diện…</string>
+    <string name="settings_group_subsystems">Tích Hợp Hệ Thống &amp; Trạng Thái Thực</string>
+    <string name="settings_subsystems_open_hint">Chạm vào từng mục để kiểm tra kết nối, cấp quyền hoặc cấu hình</string>
+    <string name="settings_group_agent_tools">Agent, Công Cụ &amp; An Toàn</string>
+    <string name="settings_default_agent_mode">Chế độ Agent mặc định</string>
+    <string name="settings_chat_tools">Bật Công Cụ trong Chat</string>
+    <string name="settings_chat_tools_desc">Cho phép Chat Agent &amp; Coding Agent gọi các công cụ đã bật</string>
+    <string name="settings_confirm_mutating">Xác nhận ghi/sửa/xóa tệp</string>
+    <string name="settings_confirm_mutating_desc">Hỏi xác nhận trước khi ghi đè, chỉnh sửa hoặc xóa tệp</string>
+    <string name="settings_confirm_shell">Xác nhận Shell, ADB &amp; Tải tệp</string>
+    <string name="settings_confirm_shell_desc">Hỏi xác nhận trước khi chạy Termux, Shizuku/ADB, POST hoặc tải xuống</string>
+    <string name="settings_search_engine">Công cụ tìm kiếm ưu tiên</string>
+    <string name="settings_agent_steps_timeout">Số bước Agent &amp; Thời gian chờ</string>
+    <string name="settings_workspace_summary">Workspace &amp; Quyền truy cập tệp</string>
+    <string name="settings_manage_tools_hub">Trung tâm hệ thống: Termux, Shizuku, ADB, Tệp &amp; Tải xuống</string>
+    <string name="settings_manage_tools_hub_desc">Kiểm tra kết nối, bind UserService, cấp quyền thư mục SAF &amp; bật/tắt tool</string>
+
+    <!-- Integrations & Tool Hub -->
+    <string name="hub_title">Control Hub &amp; Công Cụ</string>
+    <string name="hub_tab_all">Tất cả</string>
+    <string name="hub_tab_shell">Termux &amp; Shizuku</string>
+    <string name="hub_tab_files">ADB &amp; Tệp</string>
+    <string name="hub_tab_net">Internet &amp; Tải xuống</string>
+    <string name="hub_tab_tools">Danh sách Tool</string>
+    <string name="hub_termux_title">Thực thi Termux</string>
+    <string name="hub_termux_test">Kiểm tra Termux</string>
+    <string name="hub_termux_perm">Cấp quyền Termux</string>
+    <string name="hub_termux_setup_title">Cấu hình ~/.termux/termux.properties</string>
+    <string name="hub_termux_copy_props">Sao chép cấu hình</string>
+    <string name="hub_shizuku_title">Shizuku &amp; Công cụ ADB</string>
+    <string name="hub_shizuku_perm">Cấp quyền Shizuku</string>
+    <string name="hub_shizuku_bind">Kết nối UserService</string>
+    <string name="hub_shizuku_test">Chạy thử ADB</string>
+    <string name="hub_shizuku_fallback">Cho phép Shizuku hỗ trợ đọc/ghi tệp</string>
+    <string name="hub_files_title">Truy cập Tệp &amp; Thư mục SAF</string>
+    <string name="hub_files_grant_saf">Cấp quyền thư mục SAF</string>
+    <string name="hub_files_set_workspace">Sửa đường dẫn Workspace</string>
+    <string name="hub_internet_title">Internet &amp; Tìm kiếm</string>
+    <string name="hub_internet_probe">Kiểm tra kết nối HTTPS</string>
+    <string name="hub_downloads_title">Quản lý Tải xuống</string>
+    <string name="hub_downloads_test">Tải thử từ URL</string>
+    <string name="hub_permissions_title">Quản lý Quyền</string>
+    <string name="hub_tools_title">Ma trận Công cụ Dùng chung</string>
+</resources>
