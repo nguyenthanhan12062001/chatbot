@@ -18,8 +18,6 @@ local.properties
 debug.keystore
 # AI Studio cache
 .cg/
-# Screenshots
-Screenshot/
 # Gradle wrapper (runtime build artifacts)
 gradle/wrapper/gradle-wrapper.jar
 gradlew
